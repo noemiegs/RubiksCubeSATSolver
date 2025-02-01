@@ -1,0 +1,18 @@
+# Ignorer les fichiers Python compilés
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignorer les fichiers logs ou temporaires
+*.log
+*.tmp
+*.swp
+.DS_Store  # Pour macOS
+
+# Ignorer les fichiers de l'environnement virtuel
+venv/
+.env/
+
+# Ignorer les fichiers de l'éditeur (VS Code, PyCharm)
+.vscode/
+.idea/
