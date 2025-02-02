@@ -30,8 +30,8 @@ class SokorridorSolver:
             clauses.append([var_b2(c, 0)] if c == 9 else [-var_b2(c, 0)])
 
         # Objectif
-        clauses.append([var_b1(0, self.T)])
-        clauses.append([var_b2(10, self.T)])
+        clauses.append([var_b1(0, self.T - 1)]) 
+        clauses.append([var_b2(10, self.T - 1)])
 
         # Contraintes sur les actions
         for t in range(self.T):
@@ -84,7 +84,7 @@ class SokorridorSolver:
         Analyse la sortie de Gophersat et retourne les actions et positions trouvées.
         """
         if "UNSATISFIABLE" in output:
-            return "Aucun coloriage possible"
+            return ["Aucun coloriage possible"]
         
         variables = []
         for line in output.splitlines():
