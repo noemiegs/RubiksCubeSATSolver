@@ -36,30 +36,52 @@ class SokorridorSolver:
         # Contraintes sur les actions
         for t in range(self.T):
             for c in range(self.C):
-                # Déplacement à gauche
+
+                # Possible déplacement à gauche
                 if c - 1 > 0: 
                     clauses.append([-var_do("m,g", t), -var_w(c, t), -var_b1(c - 1, t)])
-                # Pousser à gauche
+
+                # Possible de pousser à gauche
                 if c - 1 > 0 and c - 2 > 0: 
                     clauses.append([-var_do("p,g", t), -var_w(c, t), var_b1(c - 1, t), -var_b1(c - 2, t)])
-                # Déplacement à droite
+
+                # Possible déplacement à droite
                 if c + 1 < self.C:
                     clauses.append([-var_do("m,d", t), -var_w(c, t), -var_b2(c + 1, t)])
-                # Pousser à droite
+
+                # Possible de pousser à droite
                 if c + 1 < self.C and c + 2 < self.C:
                     clauses.append([-var_do("p,d", t), -var_w(c, t), var_b2(c + 1, t), -var_b2(c + 2, t)])
 
-        # Contraintes de transition d'état
-        for t in range(self.T):
-            for c in range(self.C):
+                # Aller à gauche 
                 if c - 1 > 0:
                     clauses.append([-var_w(c, t), -var_do("m,g", t), var_w(c - 1, t + 1)])
+
+                # Pousser à gauche
                 if c - 1 > 0 and c - 2 > 0:
                     clauses.append([-var_w(c, t), -var_do("p,g", t), -var_b1(c - 1, t + 1)])
+
+                # Aller à droite
                 if c + 1 < self.C:
                     clauses.append([-var_w(c, t), -var_do("m,d", t), var_w(c + 1, t + 1)])
+
+                # Pousser à droite
                 if c + 1 < self.C and c + 2 < self.C:
                     clauses.append([-var_w(c, t), -var_do("p,d", t), -var_b2(c + 1, t + 1)])
+
+                # b2 reste à sa place si toutes les conditions ne sont pas réunies pour qu'elle bouge
+                if c + 1 < self.C: 
+                    clauses.append([var_do("p,d", t), var_b2(c+1,t+1)])
+                    clauses.append([var_w(c,t), var_b2(c+1, t+1)])
+                    clauses.append([var_b2(c+1,t), var_b2(c+1,t+1)])
+
+                # 
+
+                # b1 reste à sa place si toutes les conditions ne sont pas réunies pour qu'elle bouge
+                if c - 1 > 0 :
+                    clauses.append([var_do("p,g", t), var_b1(c-1,t+1)])
+                    clauses.append([var_w(c,t), var_b1(c-1, t+1)])
+                    clauses.append([var_b1(c-1,t), var_b1(c-1,t+1)])
 
         # Écriture du fichier CNF
         num_vars = 3 * self.C * self.T + 4 * self.T
