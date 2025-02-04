@@ -72,7 +72,7 @@ class SokorridorSolver:
                 # b2 reste à sa place si toutes les conditions ne sont pas réunies pour qu'elle bouge
                 if c + 1 < self.C: 
                     clauses.append([var_do("p,d", t), var_b2(c+1,t+1)])
-                    clauses.append([var_w(c-1,t), var_b2(c+1, t+1)])
+                    clauses.append([var_w(c,t), var_b2(c+1, t+1)])
                     clauses.append([var_b2(c+1,t), var_b2(c+1,t+1)])
 
                 # 
@@ -80,7 +80,7 @@ class SokorridorSolver:
                 # b1 reste à sa place si toutes les conditions ne sont pas réunies pour qu'elle bouge
                 if c - 1 > 0 :
                     clauses.append([var_do("p,g", t), var_b1(c-1,t+1)])
-                    clauses.append([var_w(c+1,t), var_b1(c-1, t+1)])
+                    clauses.append([var_w(c,t), var_b1(c-1, t+1)])
                     clauses.append([var_b1(c-1,t), var_b1(c-1,t+1)])
 
         # Écriture du fichier CNF
