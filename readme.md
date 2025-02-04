@@ -56,15 +56,15 @@ s_{i, j} :
 \end{cases}
 $$
 
+On notera $c_x$, $c_y$ et $c_z$ les coordonnées du cube $c$
+
+Enfin, on notera $g$ la fonction de reconstruction de $c$ à partir de ces coordonnées : $g(c_x, c_y, c_z) = c_x + 2 c_y + 4 c_z = c$
+
 ## Fonctions rotations
 
 Soit $c \in C$ et $o \in O$
 
 ### Positions
-
-Soit $c_x = c \ \% \ 2$, $c_y = (c // 2) \ \% \ 2$ et $c_z = c // 4$
-
-Et la fonction de reconstruction de $c$ : $g(a_x, a_y, a_z) = a_x + 2 \cdot a_y + 4 \cdot a_z$
 
 $$
 r_x(Right, Clockwise, c) =
