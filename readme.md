@@ -1,17 +1,17 @@
 # Résolution du cube 2x2
 
 ## Remarques
-On peut remarquer que tourner la face gauche du cube est equivalent à tourner celle de droite dans l'autre sens.
+On peut remarquer que tourner la face droite du cube est equivalent à tourner celle de gauche dans l'autre sens.
 De même pour toutes les faces.
 
-On peut alors restreindre l'ensemble des actions à trois faces (disons : Gauche, Bas et Derrière) avec pour chacune :
+On peut alors restreindre l'ensemble des actions à trois faces (disons : Droite, Bas et Derrière) avec pour chacune :
 <ol>
     <li>Sens horaire</li>
     <li>Demi-tour</li>
     <li>Sens anti-horaire</li>
 </ol>
 
-On peut alors remarquer que le cube de devant, en haut à droite est constament fixe (ce qui élimine une variable pour notre problème).
+On peut alors remarquer que le cube de devant, en haut à gauche est constament fixe (ce qui élimine une variable pour notre problème).
 
 ## Notations
 
@@ -21,7 +21,7 @@ On note $t_{max}$ le nombre d'étapes pour résoudre le Rubik's Cube
 On note $T = \{0, ..., t_{max}\}$ et $T^* = \{1, ..., t_{max}\}$
 
 ### Les actions
-On note $a_{f, d}(t)$ l'action de tourner la face $f \in F = \{Left, Bottom, Back\}$ dans la direction $d \in D = \{Clockwise, Halfturn, Counterclockwise\}$ à l'étape $t \in T^*$
+On note $a_{f, d}(t)$ l'action de tourner la face $f \in F = \{Right, Bottom, Back\}$ dans la direction $d \in D = \{Clockwise, Halfturn, Counterclockwise\}$ à l'étape $t \in T^*$
 
 ### Le cube
 Le Rubik's Cube est representé par un ensemble de cube ayant un $id \in C = \{1, ..., 7\}$ et une orientation $o \in O = \{0, 1, 2\}$ (l'orientation $o = 0$ étant celle lorsque le Rubik's Cube est fini)
@@ -62,6 +62,36 @@ Soit $c \in C$ et $o \in O$
 
 ### Positions
 
+Soit $c_x = c \ \% \ 2$, $c_y = (c // 2) \ \% \ 2$ et $c_z = c // 4$
+
+Et la fonction de reconstruction de $c$ : $g(a_x, a_y, a_z) = a_x + 2 \cdot a_y + 4 \cdot a_z$
+
+$$
+r_x(Right, Clockwise, c) =
+\begin{cases}
+    g(c_x, c_z, 1 - c_y) \ \ \text{si} \ \ c \in C_{Right} \\
+    c \ \ \text{sinon} \\
+\end{cases}
+$$
+$$
+r_x(Bottom, Clockwise, c) =
+\begin{cases}
+    g(c_z, c_y, 1 - c_x) \ \ \text{si} \ \ c \in C_{Bottom} \\
+    c \ \ \text{sinon} \\
+\end{cases}
+$$
+$$
+r_x(Back, Clockwise, c) =
+\begin{cases}
+    g(c_y, 1 - c_x, c_z) \ \ \text{si} \ \ c \in C_{Back} \\
+    c \ \ \text{sinon} \\
+\end{cases}
+$$
+
+- $\forall \ f \in F$ :
+$$r_x(f, Halfturn, c) = r_x^2(f, Clockwise, c)$$
+$$r_x(f, Counterclockwise, c) = r_x^3(f, Clockwise, c)$$
+
 ### Orientations
 
 - $\forall \ f \in F$
@@ -69,9 +99,9 @@ $$r_\theta(f, Halfturn, c, o) = o$$
 
 - $\forall \ d \in \{Clockwise, Counterclockwise\}$
 $$
-r_\theta(Left, d, c, o) =
+r_\theta(Right, d, c, o) =
 \begin{cases}
-    s_{0, 2}(o) \ \ \text{si} \ \ c \in C_{Left} \\
+    s_{0, 2}(o) \ \ \text{si} \ \ c \in C_{Right} \\
     o \ \ \text{sinon} \\
 \end{cases}
 $$
