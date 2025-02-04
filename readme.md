@@ -30,6 +30,66 @@ On note $x_{c, id}(t)$ la variable booléenne indiquant si le cube ayant l'ident
 
 Et $\theta_{c, o}(t)$ la variable booléenne indiquant si le cube à la position $c \in C$ est dans l'orientation $o \in O$ à l'étape $t \in T$
 
+### Fonctions rotation
+
+On note : $r_x : F \times D \times C \rightarrow C$, la fonction qui à chaque position associe la position après la rotation
+
+On note : $r_\theta : F \times D \times C \times O \rightarrow O$, la fonction qui à chaque couple de position orientation associe l'orientation après la rotation
+
+### Autres
+
+Par abus de notation, on notera $c' = r_x(f, d, c)$ et $o' = r_\theta(f, d, c, o)$
+
+Pour chaque face $f \in F$, on notera $C_f$ l'esemble des cube affecté par la rotation
+
+On notera la permutation entre $i$ et $j$
+$$
+s_{i, j} :
+\begin{cases}
+    O \rightarrow O \\
+    o \mapsto
+    \begin{cases}
+        i \ \ \text{si} \ \ o = j \\
+        j \ \ \text{si} \ \ o = i \\
+        o \ \ \text{sinon} \\
+    \end{cases} \\
+\end{cases}
+$$
+
+## Fonctions rotations
+
+Soit $c \in C$ et $o \in O$
+
+### Positions
+
+### Orientations
+
+- $\forall \ f \in F$
+$$r_\theta(f, Halfturn, c, o) = o$$
+
+- $\forall \ d \in \{Clockwise, Counterclockwise\}$
+$$
+r_\theta(Left, d, c, o) =
+\begin{cases}
+    s_{0, 2}(o) \ \ \text{si} \ \ c \in C_{Left} \\
+    o \ \ \text{sinon} \\
+\end{cases}
+$$
+$$
+r_\theta(Bottom, d, c, o) =
+\begin{cases}
+    s_{0, 1}(o) \ \ \text{si} \ \ c \in C_{Bottom} \\
+    o \ \ \text{sinon} \\
+\end{cases}
+$$
+$$
+r_\theta(Back, d, c, o) =
+\begin{cases}
+    s_{1, 2}(o) \ \ \text{si} \ \ c \in C_{Back} \\
+    o \ \ \text{sinon} \\
+\end{cases}
+$$
+
 ## Conditions d'arrêt
 
 ### Positions
@@ -76,18 +136,17 @@ $$
 $$
 
 Pour les orientations :
-- $\forall \ f \in F, \ \forall \ c \in C, \ \forall \ o \in O$ :
+- $\forall \ f \in F, \ \forall \ d \in D, \ \forall \ c \in C, \ \forall \ o \in O$ :
 $$
-\left( \bigvee_{d \in D} a_{f, d}(t) \right) \Rightarrow \Big( \theta_{c', o'}(t) = \theta_{c, o}(t - 1) \Big) \\
+a_{f, d}(t) \Rightarrow \Big( \theta_{c', o'}(t) = \theta_{c, o}(t - 1) \Big) \\
 $$
 
 Soit :
 $$
-\bigwedge_{d \in D}
-    \begin{cases}
-        \theta_{c', o'}(t) \ \vee \ \neg \theta_{c, o}(t - 1) \ \vee \ \neg a_{f, d}(t) \\
-        \neg \theta_{c', o'}(t) \ \vee \ \theta_{c, o}(t - 1) \ \vee \ \neg a_{f, d}(t) \\
-    \end{cases}
+\begin{cases}
+    \theta_{c', o'}(t) \ \vee \ \neg \theta_{c, o}(t - 1) \ \vee \ \neg a_{f, d}(t) \\
+    \neg \theta_{c', o'}(t) \ \vee \ \theta_{c, o}(t - 1) \ \vee \ \neg a_{f, d}(t) \\
+\end{cases}
 $$
 
 ## Contraintes
