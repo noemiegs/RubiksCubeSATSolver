@@ -141,12 +141,12 @@ class RubiksCube:
     def __init__(self, size: Size) -> None:
         self.size = size
         self.faces = {
-            Face.FRONT: np.full((size[0], size[1]), Color.GREEN.value, dtype=np.int8),
-            Face.BACK: np.full((size[0], size[1]), Color.BLUE.value, dtype=np.int8),
-            Face.LEFT: np.full((size[2], size[1]), Color.ORANGE.value, dtype=np.int8),
-            Face.RIGHT: np.full((size[2], size[1]), Color.RED.value, dtype=np.int8),
-            Face.TOP: np.full((size[0], size[2]), Color.WHITE.value, dtype=np.int8),
-            Face.BOTTOM: np.full((size[0], size[2]), Color.YELLOW.value, dtype=np.int8),
+            Face.FRONT: np.full((size[0], size[1]), Color.WHITE.value, dtype=np.int8),
+            Face.BACK: np.full((size[0], size[1]), Color.YELLOW.value, dtype=np.int8),
+            Face.LEFT: np.full((size[2], size[1]), Color.BLUE.value, dtype=np.int8),
+            Face.RIGHT: np.full((size[2], size[1]), Color.GREEN.value, dtype=np.int8),
+            Face.TOP: np.full((size[0], size[2]), Color.RED.value, dtype=np.int8),
+            Face.BOTTOM: np.full((size[0], size[2]), Color.ORANGE.value, dtype=np.int8),
         }
 
     def get_colors_from_pos(

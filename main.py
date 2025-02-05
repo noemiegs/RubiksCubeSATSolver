@@ -17,11 +17,19 @@ def generate_true_instance(cube: RubiksCube, moves: list[str]) -> dict[int, bool
             true_instance[Var.theta(cube_pos, orientation, t)] = True
 
         face, direction = cube.parse_move(moves[t])
-        print(f"Move: {face} {direction}")
 
         cube.rotate(face, direction)
 
         true_instance[Var.a(face, direction, t + 1)] = True
+
+    for cube_pos in range(8):
+        cube_pos = cast(CubePos, cube_pos)
+
+        colors = cube.get_colors_from_pos(Var.g(cube_pos))
+        cube_id, orientation = cube.colors_to_id_and_orientation(colors)
+
+        true_instance[Var.x(cube_pos, cube_id, len(moves))] = True
+        true_instance[Var.theta(cube_pos, orientation, len(moves))] = True
 
     return true_instance
 
