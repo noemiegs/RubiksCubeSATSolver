@@ -54,8 +54,8 @@ class Face(Enum):
     BACK = 1
     LEFT = 2
     RIGHT = 3
-    UP = 4
-    DOWN = 5
+    TOP = 4
+    BOTTOM = 5
 
     def get_vertices_idx(self) -> list[int]:
         return {
@@ -63,8 +63,8 @@ class Face(Enum):
             Face.BACK: [5, 1, 3, 7],
             Face.LEFT: [1, 0, 2, 3],
             Face.RIGHT: [4, 5, 7, 6],
-            Face.UP: [1, 5, 4, 0],
-            Face.DOWN: [2, 6, 7, 3],
+            Face.TOP: [1, 5, 4, 0],
+            Face.BOTTOM: [2, 6, 7, 3],
         }[self]
 
     @staticmethod
@@ -74,8 +74,8 @@ class Face(Enum):
             "B": Face.BACK,
             "L": Face.LEFT,
             "R": Face.RIGHT,
-            "U": Face.UP,
-            "D": Face.DOWN,
+            "U": Face.TOP,
+            "D": Face.BOTTOM,
         }[s]
 
     def to_str(self) -> str:
@@ -84,8 +84,8 @@ class Face(Enum):
             Face.BACK: "B",
             Face.LEFT: "L",
             Face.RIGHT: "R",
-            Face.UP: "U",
-            Face.DOWN: "D",
+            Face.TOP: "U",
+            Face.BOTTOM: "D",
         }[self]
 
 
@@ -114,28 +114,28 @@ class RubiksCube:
             Face.BACK: np.full((size[0], size[1]), Color.BLUE.value, dtype=np.int8),
             Face.LEFT: np.full((size[2], size[1]), Color.ORANGE.value, dtype=np.int8),
             Face.RIGHT: np.full((size[2], size[1]), Color.RED.value, dtype=np.int8),
-            Face.UP: np.full((size[0], size[2]), Color.WHITE.value, dtype=np.int8),
-            Face.DOWN: np.full((size[0], size[2]), Color.YELLOW.value, dtype=np.int8),
+            Face.TOP: np.full((size[0], size[2]), Color.WHITE.value, dtype=np.int8),
+            Face.BOTTOM: np.full((size[0], size[2]), Color.YELLOW.value, dtype=np.int8),
         }
 
     def _up_face_and_slice(self, face: Face) -> tuple[Face, slice]:
         return {
-            Face.FRONT: (Face.UP, np.s_[:, self.size[2] - 1]),
-            Face.BACK: (Face.UP, np.s_[::-1, 0]),
-            Face.LEFT: (Face.UP, np.s_[0, :]),
-            Face.RIGHT: (Face.UP, np.s_[self.size[0] - 1, ::-1]),
-            Face.UP: (Face.BACK, np.s_[::-1, 0]),
-            Face.DOWN: (Face.FRONT, np.s_[:, self.size[1] - 1]),
+            Face.FRONT: (Face.TOP, np.s_[:, self.size[2] - 1]),
+            Face.BACK: (Face.TOP, np.s_[::-1, 0]),
+            Face.LEFT: (Face.TOP, np.s_[0, :]),
+            Face.RIGHT: (Face.TOP, np.s_[self.size[0] - 1, ::-1]),
+            Face.TOP: (Face.BACK, np.s_[::-1, 0]),
+            Face.BOTTOM: (Face.FRONT, np.s_[:, self.size[1] - 1]),
         }[face]
 
     def _bottom_face_and_slice(self, face: Face) -> tuple[Face, slice]:
         return {
-            Face.FRONT: (Face.DOWN, np.s_[::-1, 0]),
-            Face.BACK: (Face.DOWN, np.s_[:, self.size[2] - 1]),
-            Face.LEFT: (Face.DOWN, np.s_[0, :]),
-            Face.RIGHT: (Face.DOWN, np.s_[self.size[0] - 1, ::-1]),
-            Face.UP: (Face.FRONT, np.s_[::-1, 0]),
-            Face.DOWN: (Face.BACK, np.s_[:, self.size[1] - 1]),
+            Face.FRONT: (Face.BOTTOM, np.s_[::-1, 0]),
+            Face.BACK: (Face.BOTTOM, np.s_[:, self.size[2] - 1]),
+            Face.LEFT: (Face.BOTTOM, np.s_[0, :]),
+            Face.RIGHT: (Face.BOTTOM, np.s_[self.size[0] - 1, ::-1]),
+            Face.TOP: (Face.FRONT, np.s_[::-1, 0]),
+            Face.BOTTOM: (Face.BACK, np.s_[:, self.size[1] - 1]),
         }[face]
 
     def _left_face_and_slice(self, face: Face) -> tuple[Face, slice]:
@@ -144,8 +144,8 @@ class RubiksCube:
             Face.BACK: (Face.RIGHT, np.s_[self.size[2] - 1, ::-1]),
             Face.LEFT: (Face.BACK, np.s_[self.size[0] - 1, ::-1]),
             Face.RIGHT: (Face.FRONT, np.s_[self.size[0] - 1, ::-1]),
-            Face.UP: (Face.LEFT, np.s_[::-1, 0]),
-            Face.DOWN: (Face.LEFT, np.s_[:, self.size[1] - 1]),
+            Face.TOP: (Face.LEFT, np.s_[::-1, 0]),
+            Face.BOTTOM: (Face.LEFT, np.s_[:, self.size[1] - 1]),
         }[face]
 
     def _right_face_and_slice(self, face: Face) -> tuple[Face, slice]:
@@ -154,8 +154,8 @@ class RubiksCube:
             Face.BACK: (Face.LEFT, np.s_[0, :]),
             Face.LEFT: (Face.FRONT, np.s_[0, :]),
             Face.RIGHT: (Face.BACK, np.s_[0, :]),
-            Face.UP: (Face.RIGHT, np.s_[::-1, 0]),
-            Face.DOWN: (Face.RIGHT, np.s_[:, self.size[1] - 1]),
+            Face.TOP: (Face.RIGHT, np.s_[::-1, 0]),
+            Face.BOTTOM: (Face.RIGHT, np.s_[:, self.size[1] - 1]),
         }[face]
 
     def _rotate_clockwise(self, face: Face) -> None:
@@ -195,7 +195,7 @@ class RubiksCube:
             return self.size[0] == self.size[1]
         if face in (Face.LEFT, Face.RIGHT):
             return self.size[1] == self.size[2]
-        if face in (Face.UP, Face.DOWN):
+        if face in (Face.TOP, Face.BOTTOM):
             return self.size[0] == self.size[2]
 
     def rotate(self, face: Face, direction: Direction) -> None:
@@ -328,10 +328,10 @@ class RubiksCube:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-                elif event.type == pygame.MOUSEBUTTONDOWN:
+                elif event.type == pygame.MOUSEBUTTONBOTTOM:
                     rotating = True
                     last_mouse_pos = pygame.mouse.get_pos()
-                elif event.type == pygame.MOUSEBUTTONUP:
+                elif event.type == pygame.MOUSEBUTTONTOP:
                     rotating = False
                     last_mouse_pos = None
 
