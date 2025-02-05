@@ -3,10 +3,14 @@ import numpy as np
 import pygame
 from math import cos, sin, radians
 import random
+from typing import Literal
 
 
 WIDTH, HEIGHT = 600, 600
 X, Y, Z = 0, 1, 2
+
+CubePos = Literal[0, 1, 2, 3, 4, 5, 6, 7]
+Orientation = Literal[0, 1, 2]
 
 
 class Color(Enum):
@@ -117,6 +121,8 @@ class RubiksCube:
             Face.TOP: np.full((size[0], size[2]), Color.WHITE.value, dtype=np.int8),
             Face.BOTTOM: np.full((size[0], size[2]), Color.YELLOW.value, dtype=np.int8),
         }
+    
+    def color_to_id_and_orientation(self, color: int) -> tuple[int, int]:
 
     def _up_face_and_slice(self, face: Face) -> tuple[Face, slice]:
         return {
