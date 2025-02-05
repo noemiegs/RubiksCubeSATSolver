@@ -3,7 +3,7 @@ import subprocess
 
 class SokorridorSolver:
     def __init__(
-        self, T=15, C=11, cnf_filename="sokorridor.cnf", output_filename="output.txt"
+        self, T=50, C=50, cnf_filename="sokorridor.cnf", output_filename="output.txt"
     ):
         self.T = T  # Nombre de pas de temps
         self.C = C  # Nombre de cases

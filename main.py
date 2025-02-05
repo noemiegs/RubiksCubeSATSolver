@@ -4,23 +4,23 @@ from rubiks_cube_solver import RubiksCubeSolver, Var
 
 
 def generate_true_instance(size: Size, moves: list[str]) -> dict[int, bool]:
-    cube = RubiksCube((2, 2, 2))
+    cube = RubiksCube(size)
     true_instance: dict[int, bool] = {}
 
-    for t in range(len(moves)):
-        for cube_pos in range(8):
-            cube_pos = cast(CubePos, cube_pos)
+    # for t in range(len(moves)):
+    #     for cube_pos in range(8):
+    #         cube_pos = cast(CubePos, cube_pos)
 
-            colors = cube.get_colors_from_pos(Var.g(cube_pos))
-            cube_id, orientation = cube.colors_to_id_and_orientation(colors)
+    #         colors = cube.get_colors_from_pos(Var.g(cube_pos))
+    #         cube_id, orientation = cube.colors_to_id_and_orientation(colors)
 
-            true_instance[Var.x(cube_pos, cube_id, t)] = True
-            true_instance[Var.theta(cube_pos, orientation, t)] = True
+    #         true_instance[Var.x(cube_pos, cube_id, t)] = True
+    #         true_instance[Var.theta(cube_pos, orientation, t)] = True
 
-        face, direction = cube.parse_move(moves[t])
-        cube.rotate(face, direction)
+    #     face, direction = cube.parse_move(moves[t])
+    #     cube.rotate(face, direction)
 
-        true_instance[Var.a(face, direction, t)] = True
+    #     true_instance[Var.a(face, direction, t)] = True
 
     return true_instance
 
