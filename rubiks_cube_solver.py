@@ -105,7 +105,7 @@ class Var:
             if face == Face.RIGHT:
                 return cast(CubePos, c_x + 2 * c_z + 4 * (1 - c_y))
             if face == Face.BOTTOM:
-                return cast(CubePos, c_z + 2 * c_y + 4 * (1 - c_x))
+                return cast(CubePos, (1 - c_z) + 2 * c_y + 4 * c_x)
             if face == Face.BACK:
                 return cast(CubePos, c_y + 2 * (1 - c_x) + 4 * c_z)
             raise ValueError(f"Invalid face: {face}")
