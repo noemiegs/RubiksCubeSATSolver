@@ -43,7 +43,8 @@ Par abus de notation, on notera $c' = r_x(f, d, c)$ et $o' = r_\theta(f, d, c, o
 Pour chaque face $f \in F$, on notera $C_f$ l'esemble des cube affecté par la rotation
 
 On notera la permutation entre $i$ et $j$
-$$s_{i, j} :
+\[
+s_{i, j} :
 \begin{cases}
     O \rightarrow O \\
     o \mapsto
@@ -52,7 +53,8 @@ $$s_{i, j} :
         j & \text{si} \quad o = i \\
         o & \text{sinon}
     \end{cases}
-\end{cases}$$
+\end{cases}
+\]
 
 On notera $c_x$, $c_y$ et $c_z$ les coordonnées du cube $c$
 
