@@ -388,7 +388,7 @@ class RubiksCubeSolver:
         if true_instance is not None and not sat:
             sat, unsat_clauses = self.verify(true_instance, clauses)
 
-            for unsat_clause in unsat_clauses[-5:]:
+            for unsat_clause in unsat_clauses:
                 print(unsat_clause[0])
                 print([Var.decode(v) for v in unsat_clause[1]])
                 print()
