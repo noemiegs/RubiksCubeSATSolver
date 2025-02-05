@@ -1,6 +1,5 @@
 import subprocess
 from typing import cast
-import numpy as np
 from itertools import product
 
 from rubiks_cube import Direction, Face, RubiksCube, CubePos, Orientation
@@ -18,14 +17,24 @@ class Var:
 
     @staticmethod
     def theta(cube_pos: CubePos, orientation: Orientation, t: int) -> int:
-        return 64 * RubiksCubeSolver.t_max + cube_pos + orientation * 8 + t * 24 + 1
+        return (
+            64 * (RubiksCubeSolver.t_max + 1) + cube_pos + orientation * 8 + t * 24 + 1
+        )
 
     @staticmethod
     def a(face: Face, direction: Direction, t: int) -> int:
+        assert t <= RubiksCubeSolver.t_max, f"Invalid time: {t}"
+
+        face_idx = {
+            Face.RIGHT: 0,
+            Face.BOTTOM: 1,
+            Face.BACK: 2,
+        }
+
         return (
-            64 * RubiksCubeSolver.t_max
-            + 24 * RubiksCubeSolver.t_max
-            + face.value * 3
+            64 * (RubiksCubeSolver.t_max + 1)
+            + 24 * (RubiksCubeSolver.t_max + 1)
+            + face_idx[face] * 3
             + direction.value
             + t * 9
             + 1
@@ -33,7 +42,7 @@ class Var:
 
     @staticmethod
     def n_vars() -> int:
-        return (64 + 24 + 9) * RubiksCubeSolver.t_max
+        return (64 + 24 + 9) * (RubiksCubeSolver.t_max + 1)
 
     @staticmethod
     def decode(var: int) -> str:
@@ -158,8 +167,6 @@ class RubiksCubeSolver:
         """
         clauses: list[NamedClause] = self.generate_initial_clauses()
 
-        # Etat initial du cube
-
         # Etat final
         for i in range(8):
             i = cast(CubePos, i)
@@ -171,7 +178,7 @@ class RubiksCubeSolver:
             )
 
         # Transitions des positions
-        for t in np.linspace(1, self.t_max, self.t_max):
+        for t in range(1, self.t_max + 1):
             for id in range(8):
                 id = cast(CubePos, id)
                 for c in range(8):
@@ -201,7 +208,7 @@ class RubiksCubeSolver:
                             )
 
         # Transitions des positions
-        for t in np.linspace(1, self.t_max, self.t_max):
+        for t in range(1, self.t_max + 1):
             for id in range(8):
                 id = cast(CubePos, id)
                 for c in range(8):
@@ -214,7 +221,9 @@ class RubiksCubeSolver:
                                     (
                                         f"Transition des orientations, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 1",
                                         [
-                                            Var.theta(id, Var.rotate_theta(f, d, c, o), t),
+                                            Var.theta(
+                                                id, Var.rotate_theta(f, d, c, o), t
+                                            ),
                                             -Var.theta(c, o, t - 1),
                                             -Var.a(f, d, t),
                                         ],
@@ -225,7 +234,9 @@ class RubiksCubeSolver:
                                     (
                                         f"Transition des orientations, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 2",
                                         [
-                                            -Var.theta(id, Var.rotate_theta(f, d, c, o), t),
+                                            -Var.theta(
+                                                id, Var.rotate_theta(f, d, c, o), t
+                                            ),
                                             Var.theta(c, o, t - 1),
                                             -Var.a(f, d, t),
                                         ],
@@ -297,11 +308,12 @@ class RubiksCubeSolver:
         self.generate_cnf_file(clauses)
 
         result = subprocess.run(
-            ["gophersat", "--verbose", self.cnf_filename],
+            ["gophersat", "--verbose", "rubiks_cube.cnf"],
             capture_output=True,
             text=True,
         )
-        return self.parse_output(result.stdout)
+        print(result.stdout)
+        # return self.parse_output(result.stdout)
 
     def parse_output(self, output: str) -> tuple[bool, list[str], list[Action]]:
         """
