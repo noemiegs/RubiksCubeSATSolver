@@ -69,7 +69,7 @@ class Var:
 
     @staticmethod
     def is_action(var: int) -> bool:
-        return 64 * RubiksCubeSolver.t_max + 24 * RubiksCubeSolver.t_max < var
+        return (64 + 24) * (RubiksCubeSolver.t_max + 1) < var
 
     @staticmethod
     def get_action_from(a: int) -> tuple[Face, Direction, int]:
@@ -389,8 +389,9 @@ class RubiksCubeSolver:
             sat, unsat_clauses = self.verify(true_instance, clauses)
 
             for unsat_clause in unsat_clauses:
-                print(unsat_clause[1])
+                print(unsat_clause[0])
                 print([Var.decode(v) for v in unsat_clause[1]])
+                print()
 
         for line in result:
             print(line)
