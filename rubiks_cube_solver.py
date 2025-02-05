@@ -6,6 +6,7 @@ from rubiks_cube import Direction, Face, RubiksCube, CubePos, Orientation
 
 Clause = list[int]
 NamedClause = tuple[str, Clause]
+Action = tuple[Face, Direction]
 
 
 class Var:
@@ -51,10 +52,22 @@ class Var:
             cube_pos %= 8
             return prefix + f"theta({cube_pos}, {orientation}, {t})"
 
-        t = (var - 1) // 9
-        face = (var - 1) % 9 // 3
-        direction = (var - 1) % 3
+        face, direction, t = Var.get_action_from(var)
         return prefix + f"a({Face(face).name}, {Direction(direction).name}, {t})"
+
+    @staticmethod
+    def is_action(var: int) -> bool:
+        return 64 * RubiksCubeSolver.t_max + 24 * RubiksCubeSolver.t_max < var
+
+    @staticmethod
+    def get_action_from(a: int) -> tuple[Face, Direction, int]:
+        assert Var.is_action(a), f"Invalid action: {a}, {Var.decode(a)}"
+
+        t = (a - 1) // 24
+        a = (a - 1) % 24
+        face = a // 3
+        direction = a % 3
+        return Face(face), Direction(direction), t
 
     @staticmethod
     def g(cube_pos: CubePos) -> tuple[int, int, int]:
@@ -178,7 +191,7 @@ class RubiksCubeSolver:
 
         return len(unsat_clauses) == 0, unsat_clauses
 
-    def solve(self, clauses: list[Clause]) -> tuple[bool, list[str]]:
+    def solve(self, clauses: list[Clause]) -> tuple[bool, list[str], list[Action]]:
         """
         Exécute Gophersat et récupère le résultat.
         """
@@ -191,20 +204,32 @@ class RubiksCubeSolver:
         )
         return self.parse_output(result.stdout)
 
-    def parse_output(self, output: str) -> tuple[bool, list[str]]:
+    def parse_output(self, output: str) -> tuple[bool, list[str], list[Action]]:
         """
         Analyse la sortie de Gophersat et retourne les actions et positions trouvées.
         """
         if "UNSATISFIABLE" in output:
-            return False, []
+            return False, [], []
 
         variables: list[int] = []
+
         for line in output.splitlines():
             if line.startswith("v "):  # Ligne contenant les variables SAT
                 values = map(int, line[2:].strip().split())
                 variables.extend([v for v in values if v > 0])
 
-        return True, [Var.decode(v) for v in variables]
+        actions: list[tuple[Face, Direction, int]] = [
+            Var.get_action_from(a) for a in variables if Var.is_action(a)
+        ]
+
+        return (
+            True,
+            [Var.decode(v) for v in variables],
+            [
+                (face, direction)
+                for face, direction, t in sorted(actions, key=lambda a: a[2])
+            ],
+        )
 
     def generate_initial_state(self) -> list[NamedClause]:
         clauses: list[NamedClause] = []
@@ -243,7 +268,7 @@ class RubiksCubeSolver:
         Gère tout le processus : génération du CNF, exécution du solveur et extraction du résultat.
         """
         clauses = self.generate_clauses()
-        sat, result = self.solve([clauses[1] for clauses in clauses])
+        sat, result, actions = self.solve([clauses[1] for clauses in clauses])
 
         if not sat:
             true_instaces = {
@@ -279,7 +304,8 @@ class RubiksCubeSolver:
 
         for line in result:
             print(line)
-        return result
+
+        return actions
 
 
 # =====================
@@ -290,4 +316,9 @@ rubiks_cube = RubiksCube((2, 2, 2))
 rubiks_cube.shuffle(10)
 
 solver = RubiksCubeSolver(rubiks_cube)
-solver.run()
+actions = solver.run()
+
+for face, direction in actions:
+    rubiks_cube.rotate(face, direction)
+
+rubiks_cube.show()
