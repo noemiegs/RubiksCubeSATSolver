@@ -46,15 +46,24 @@ class Direction(Enum):
             "'": Direction.COUNTERCLOCKWISE,
         }[s]
 
+    @staticmethod
+    def opposite(direction: "Direction") -> "Direction":
+        return {
+            Direction.CLOCKWISE: Direction.COUNTERCLOCKWISE,
+            Direction.HALF_TURN: Direction.HALF_TURN,
+            Direction.COUNTERCLOCKWISE: Direction.CLOCKWISE,
+        }[direction]
+
     def to_str(self) -> str:
         return {
             Direction.CLOCKWISE: "",
             Direction.HALF_TURN: "2",
             Direction.COUNTERCLOCKWISE: "'",
         }[self]
-    
+
     def __lt__(self, other: "Direction") -> bool:
         return self.value < other.value
+
 
 class Face(Enum):
     FRONT = 0
@@ -85,6 +94,17 @@ class Face(Enum):
             "D": Face.BOTTOM,
         }[s]
 
+    @staticmethod
+    def opposite(face: "Face") -> "Face":
+        return {
+            Face.FRONT: Face.BACK,
+            Face.BACK: Face.FRONT,
+            Face.LEFT: Face.RIGHT,
+            Face.RIGHT: Face.LEFT,
+            Face.TOP: Face.BOTTOM,
+            Face.BOTTOM: Face.TOP,
+        }[face]
+
     def to_str(self) -> str:
         return {
             Face.FRONT: "F",
@@ -94,7 +114,7 @@ class Face(Enum):
             Face.TOP: "U",
             Face.BOTTOM: "D",
         }[self]
-    
+
     def __lt__(self, other: "Face") -> bool:
         return self.value < other.value
 
