@@ -152,7 +152,7 @@ class RubiksCubeSolver:
         self.cnf_filename = cnf_filename  # Fichier CNF
         self.var_mapping = {}  # Correspondance des variables SAT
 
-    def generate_initial_final_clauses(self) -> list[NamedClause]:
+    def generate_clauses(self) -> list[NamedClause]:
         """
         Génère les clauses.
         """
@@ -200,27 +200,37 @@ class RubiksCubeSolver:
                                 )
                             )
 
-                            clauses.append(
-                                (
-                                    f"Transition des orientations, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 1",
-                                    [
-                                        Var.theta(id, Var.rotate_theta(f, d, c, o), t),
-                                        -Var.theta(c, o, t - 1),
-                                        -Var.a(f, d, t),
-                                    ],
+        # Transitions des positions
+        for t in np.linspace(1, self.t_max, self.t_max):
+            for id in range(8):
+                id = cast(CubePos, id)
+                for c in range(8):
+                    c = cast(CubePos, c)
+                    for f in [Face.RIGHT, Face.BOTTOM, Face.BACK]:
+                        for d in Direction:
+                            for o in range(3):
+                                o = cast(Orientation, o)
+                                clauses.append(
+                                    (
+                                        f"Transition des orientations, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 1",
+                                        [
+                                            Var.theta(id, Var.rotate_theta(f, d, c, o), t),
+                                            -Var.theta(c, o, t - 1),
+                                            -Var.a(f, d, t),
+                                        ],
+                                    )
                                 )
-                            )
 
-                            clauses.append(
-                                (
-                                    f"Transition des orientations, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 2",
-                                    [
-                                        -Var.theta(id, Var.rotate_theta(f, d, c, o), t),
-                                        Var.theta(c, o, t - 1),
-                                        -Var.a(f, d, t),
-                                    ],
+                                clauses.append(
+                                    (
+                                        f"Transition des orientations, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 2",
+                                        [
+                                            -Var.theta(id, Var.rotate_theta(f, d, c, o), t),
+                                            Var.theta(c, o, t - 1),
+                                            -Var.a(f, d, t),
+                                        ],
+                                    )
                                 )
-                            )
 
             for f, d in product([Face.RIGHT, Face.BOTTOM, Face.BACK], Direction):
                 for f_prime, d_prime in product(
