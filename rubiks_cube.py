@@ -123,7 +123,7 @@ class RubiksCube:
         }
     
     def color_to_id_and_orientation(self, color: int) -> tuple[int, int]:
-
+    
     def _up_face_and_slice(self, face: Face) -> tuple[Face, slice]:
         return {
             Face.FRONT: (Face.TOP, np.s_[:, self.size[2] - 1]),

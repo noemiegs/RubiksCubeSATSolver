@@ -1,5 +1,7 @@
 import subprocess
 from typing import cast
+import numpy as np
+from itertools import product
 
 from rubiks_cube import Direction, Face, RubiksCube, CubePos, Orientation
 
@@ -131,13 +133,61 @@ class RubiksCubeSolver:
         self.cnf_filename = cnf_filename  # Fichier CNF
         self.var_mapping = {}  # Correspondance des variables SAT
 
-    def generate_clauses(self) -> list[NamedClause]:
+    def generate_initial_final_clauses(self) -> list[NamedClause]:
         """
-        Génère les clauses du problème.
+        Génère les clauses.
         """
         clauses: list[NamedClause] = []
 
-        clauses.append(("Initial state", [Var.x(0, 0, 0)]))
+        # Etat initial du cube
+
+        # Etat final
+        for i in range(8):
+            clauses.append(f'Etat final, position du cube {i}', [Var.x(i, i, self.T)])
+            clauses.append(f'Etat final, orientation du cube {i}', [Var.theta(i, 0, self.T)])
+
+        # Transitions des positions
+        for t in np.linspace(1,self.T,self.T):
+            for id in range(8):
+                for c in range(8):
+                    for f in range (6):
+                        for d in range(3):
+                            clauses.append(f'Transition des positions, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 1', [
+                                Var.x(Var.rotate_x(Face(d), d, c), i, t),
+                                -Var.x(c, id, t-1),
+                                -Var.a(f, d, t)]
+                            )
+
+                            clauses.append(f'Transition des positions, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 2', [
+                                -Var.x(Var.rotate_x(Face(d), d, c), i, t),
+                                Var.x(c, id, t-1),
+                                -Var.a(f, d, t)]
+                            )
+
+                            clauses.append(f'Transition des orientations, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 1', [
+                                Var.theta(Var.rotate_theta(Face(d), d, c), i, t),
+                                -Var.theta(c, id, t-1),
+                                -Var.a(f, d, t)]
+                            )
+                                   
+                            clauses.append(f'Transition des orientations, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 2', [
+                                -Var.theta(Var.rotate_theta(Face(d), d, c), i, t),
+                                Var.theta(c, id, t-1),
+                                -Var.a(f, d, t)]
+                            )
+
+            for (f, d) in product(range(6), range(3)):
+                for (f_prime, d_prime) in product(range(6), range(3)):
+                    if (f, d) < (f_prime, d_prime):
+                        clauses.append(f'Interdiction de rotations multiples, temps {t}, face {f}, {f_prime} et direction {d}, {d_prime}', [
+                            -Var.a(f, d, t),
+                            -Var.a(f_prime, d_prime, t)]
+                        )
+
+            # Ajout des clauses pour forcer une action par étape
+            clauses.append(f'Action obligatoire à chaque étape, temps {t}', [
+                Var.a(f, d, t) for (f, d) in product(range(6), range(3))]
+            )
 
         return clauses
 
