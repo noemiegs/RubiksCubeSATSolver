@@ -48,10 +48,10 @@ $$s_{i, j} :
     O \rightarrow O \\
     o \mapsto
     \begin{cases}
-        i \ \ \text{si} \ \ o = j \\
-        j \ \ \text{si} \ \ o = i \\
-        o \ \ \text{sinon} \\
-    \end{cases} \\
+        i & \text{si} \quad o = j \\
+        j & \text{si} \quad o = i \\
+        o & \text{sinon}
+    \end{cases}
 \end{cases}$$
 
 On notera $c_x$, $c_y$ et $c_z$ les coordonnées du cube $c$
