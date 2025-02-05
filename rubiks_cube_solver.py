@@ -263,40 +263,17 @@ class RubiksCubeSolver:
 
         return clauses
 
-    def run(self):
+    def run(self, true_instance: dict[int, bool] | None = None) -> list[Action]:
         """
         Gère tout le processus : génération du CNF, exécution du solveur et extraction du résultat.
+
+        true_instance : dictionnaire des variables SAT à forcer à True (Pour debug uniquement).
         """
         clauses = self.generate_clauses()
         sat, result, actions = self.solve([clauses[1] for clauses in clauses])
 
-        if not sat:
-            true_instaces = {
-                # var_w(6, 0): True,
-                # var_w(5, 1): True,
-                # var_w(4, 2): True,
-                # var_w(3, 3): True,
-                # var_w(3, 4): True,
-                # var_w(2, 5): True,
-                # var_w(2, 6): True,
-                # var_b1(2, 0): True,
-                # var_b1(2, 1): True,
-                # var_b1(2, 2): True,
-                # var_b1(2, 3): True,
-                # var_b1(1, 4): True,
-                # var_b1(1, 5): True,
-                # var_b1(0, 6): True,
-                # var_b1(0, self.T - 1): True,
-                # var_b2(9, 0): True,
-                # # var_b2(10, self.T - 1): True
-                # var_do("m,g", 0): True,
-                # var_do("m,g", 1): True,
-                # var_do("m,g", 2): True,
-                # var_do("p,g", 3): True,
-                # var_do("m,g", 4): True,
-                # var_do("p,g", 5): True,
-            }
-            sat, unsat_clauses = self.verify(true_instaces, clauses)
+        if true_instance is not None and not sat:
+            sat, unsat_clauses = self.verify(true_instance, clauses)
 
             for unsat_clause in unsat_clauses:
                 print(unsat_clause[1])
@@ -306,19 +283,3 @@ class RubiksCubeSolver:
             print(line)
 
         return actions
-
-
-# =====================
-# EXÉCUTION DU SOLVEUR
-# =====================
-
-rubiks_cube = RubiksCube((2, 2, 2))
-rubiks_cube.shuffle(10)
-
-solver = RubiksCubeSolver(rubiks_cube)
-actions = solver.run()
-
-for face, direction in actions:
-    rubiks_cube.rotate(face, direction)
-
-rubiks_cube.show()

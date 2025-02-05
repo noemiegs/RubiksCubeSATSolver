@@ -11,6 +11,7 @@ X, Y, Z = 0, 1, 2
 
 CubePos = Literal[0, 1, 2, 3, 4, 5, 6, 7]
 Orientation = Literal[0, 1, 2]
+Size = tuple[int, int, int]
 
 
 class Color(Enum):
@@ -112,7 +113,7 @@ class RubiksCube:
 
     """
 
-    def __init__(self, size: tuple[int, int, int]) -> None:
+    def __init__(self, size: Size) -> None:
         self.size = size
         self.faces = {
             Face.FRONT: np.full((size[0], size[1]), Color.GREEN.value, dtype=np.int8),
@@ -272,12 +273,12 @@ class RubiksCube:
 
         return moves_str
 
+    def parse_move(self, s: str) -> tuple[Face, Direction]:
+        return Face.from_str(s[0]), Direction.from_str(s[1:])
+
     def apply_rotations(self, rotations: list[str]) -> None:
         for rotation in rotations:
-            face_str, direction_str = rotation[0], rotation[1:]
-            face = Face.from_str(face_str)
-            direction = Direction.from_str(direction_str)
-            self.rotate(face, direction)
+            self.rotate(*self.parse_move(rotation))
 
     def _draw_face(
         self, screen: pygame.surface.Surface, colors: np.ndarray, coords: np.ndarray
