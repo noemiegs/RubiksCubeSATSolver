@@ -44,11 +44,17 @@ class Var:
             cube_pos %= 8
             return prefix + f"x({cube_pos}, {cube_id}, {t})"
 
-        t = (var - 1) // 24
-        cube_pos = (var - 1) % 24
-        orientation = cube_pos // 8
-        cube_pos %= 8
-        return prefix + f"theta({cube_pos}, {orientation}, {t})"
+        if var <= 64 * RubiksCubeSolver.t_max + 24 * RubiksCubeSolver.t_max:
+            t = (var - 1) // 24
+            cube_pos = (var - 1) % 24
+            orientation = cube_pos // 8
+            cube_pos %= 8
+            return prefix + f"theta({cube_pos}, {orientation}, {t})"
+
+        t = (var - 1) // 9
+        face = (var - 1) % 9 // 3
+        direction = (var - 1) % 3
+        return prefix + f"a({Face(face).name}, {Direction(direction).name}, {t})"
 
     @staticmethod
     def g(cube_pos: CubePos) -> tuple[int, int, int]:
