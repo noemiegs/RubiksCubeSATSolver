@@ -1,11 +1,11 @@
 import subprocess
-from typing import Literal, cast
+from typing import cast
 
-from rubiks_cube import Direction, Face, RubiksCube
+from rubiks_cube import Direction, Face, RubiksCube, CubePos, Orientation
 
 
-CubePos = Literal[0, 1, 2, 3, 4, 5, 6, 7]
-Orientation = Literal[0, 1, 2]
+Clause = list[int]
+NamedClause = tuple[str, Clause]
 
 
 class Var:
@@ -16,6 +16,39 @@ class Var:
     @staticmethod
     def theta(cube_pos: CubePos, orientation: Orientation, t: int) -> int:
         return 64 * RubiksCubeSolver.t_max + cube_pos + orientation * 8 + t * 24 + 1
+
+    @staticmethod
+    def a(face: Face, direction: Direction, t: int) -> int:
+        return (
+            64 * RubiksCubeSolver.t_max
+            + 24 * RubiksCubeSolver.t_max
+            + face.value * 3
+            + direction.value
+            + t * 9
+            + 1
+        )
+
+    @staticmethod
+    def n_vars() -> int:
+        return (64 + 24 + 9) * RubiksCubeSolver.t_max
+
+    @staticmethod
+    def decode(var: int) -> str:
+        prefix = "not " if var < 0 else ""
+        var = abs(var)
+
+        if var <= 64 * RubiksCubeSolver.t_max:
+            t = (var - 1) // 64
+            cube_pos = (var - 1) % 64
+            cube_id = cube_pos // 8
+            cube_pos %= 8
+            return prefix + f"x({cube_pos}, {cube_id}, {t})"
+
+        t = (var - 1) // 24
+        cube_pos = (var - 1) % 24
+        orientation = cube_pos // 8
+        cube_pos %= 8
+        return prefix + f"theta({cube_pos}, {orientation}, {t})"
 
     @staticmethod
     def g(cube_pos: CubePos) -> tuple[int, int, int]:
@@ -98,111 +131,122 @@ class RubiksCubeSolver:
         self.cnf_filename = cnf_filename  # Fichier CNF
         self.var_mapping = {}  # Correspondance des variables SAT
 
-    def generate_cnf_file(self):
+    def generate_clauses(self) -> list[NamedClause]:
         """
-        Génère le fichier CNF pour le problème.
+        Génère les clauses du problème.
         """
-        clauses = []
+        clauses: list[NamedClause] = []
 
-        # Écriture du fichier CNF
-        num_vars = 3 * self.C * self.T + 4 * self.T
-        with open(self.cnf_filename, "w") as f:
-            f.write(f"p cnf {num_vars} {len(clauses)}\n")
-            for clause in clauses:
-                f.write(" ".join(map(str, clause)) + " 0\n")
+        clauses.append(("Initial state", [Var.x(0, 0, 0)]))
 
         return clauses
 
-    def solve(self):
+    def generate_cnf_file(self, clauses: list[Clause]) -> None:
+        """
+        Génère le fichier CNF pour le problème.
+        """
+        # Écriture du fichier CNF
+        with open(self.cnf_filename, "w") as f:
+            f.write(f"p cnf {Var.n_vars()} {len(clauses)}\n")
+            for clause in clauses:
+                f.write(" ".join(map(str, clause)) + " 0\n")
+
+    def verify(
+        self,
+        vars: dict[int, bool],
+        clauses: list[NamedClause],
+        default_var_value: bool = False,
+    ) -> tuple[bool, list[NamedClause]]:
+        """
+        Vérifie si les variables sont satisfaisantes pour les clauses.
+
+        Retourne un tuple (booléen, liste de clauses insatisfaites).
+        """
+        unsat_clauses: list[NamedClause] = []
+
+        for clause in clauses:
+            if not any(
+                vars.get(abs(var), default_var_value) == (var > 0) for var in clause[1]
+            ):
+                unsat_clauses.append(clause)
+
+        return len(unsat_clauses) == 0, unsat_clauses
+
+    def solve(self, clauses: list[Clause]) -> tuple[bool, list[str]]:
         """
         Exécute Gophersat et récupère le résultat.
         """
+        self.generate_cnf_file(clauses)
+
         result = subprocess.run(
             ["gophersat", "--verbose", self.cnf_filename],
             capture_output=True,
             text=True,
         )
-        return result.stdout
+        return self.parse_output(result.stdout)
 
-    def parse_output(self, output):
+    def parse_output(self, output: str) -> tuple[bool, list[str]]:
         """
         Analyse la sortie de Gophersat et retourne les actions et positions trouvées.
         """
         if "UNSATISFIABLE" in output:
-            return ["Aucun coloriage possible"]
+            return False, []
 
-        variables = []
+        variables: list[int] = []
         for line in output.splitlines():
             if line.startswith("v "):  # Ligne contenant les variables SAT
                 values = map(int, line[2:].strip().split())
                 variables.extend([v for v in values if v > 0])
 
-        return self.decode_variables(variables)
+        return True, [Var.decode(v) for v in variables]
 
-    def decode_variables(self, variables): ...
+    def generate_initial_state(self) -> list[NamedClause]:
+        clauses: list[NamedClause] = []
+
+        for cube_pos in range(8):
+            for cube_id in range(3):
+                clauses.append(("Initial state", [Var.x(cube_pos, cube_id, 0)]))
+
+        return clauses
 
     def run(self):
         """
         Gère tout le processus : génération du CNF, exécution du solveur et extraction du résultat.
         """
-        clauses = self.generate_cnf_file()
+        clauses = self.generate_clauses()
+        sat, result = self.solve([clauses[1] for clauses in clauses])
 
-        # Numérotation des variables
-        def var_w(c, t):
-            return c + t * self.C + 1
+        if not sat:
+            true_instaces = {
+                # var_w(6, 0): True,
+                # var_w(5, 1): True,
+                # var_w(4, 2): True,
+                # var_w(3, 3): True,
+                # var_w(3, 4): True,
+                # var_w(2, 5): True,
+                # var_w(2, 6): True,
+                # var_b1(2, 0): True,
+                # var_b1(2, 1): True,
+                # var_b1(2, 2): True,
+                # var_b1(2, 3): True,
+                # var_b1(1, 4): True,
+                # var_b1(1, 5): True,
+                # var_b1(0, 6): True,
+                # var_b1(0, self.T - 1): True,
+                # var_b2(9, 0): True,
+                # # var_b2(10, self.T - 1): True
+                # var_do("m,g", 0): True,
+                # var_do("m,g", 1): True,
+                # var_do("m,g", 2): True,
+                # var_do("p,g", 3): True,
+                # var_do("m,g", 4): True,
+                # var_do("p,g", 5): True,
+            }
+            sat, unsat_clauses = self.verify(true_instaces, clauses)
 
-        def var_b1(c, t):
-            return self.C * self.T + c + t * self.C + 1
-
-        def var_b2(c, t):
-            return self.C * self.T * 2 + c + t * self.C + 1
-
-        def var_do(a, t):
-            action_offset = 3 * self.C * self.T
-            actions = {"m,d": 0, "m,g": 1, "p,d": 2, "p,g": 3}
-            return action_offset + t * 4 + actions[a] + 1
-
-        true_instaces = {
-            var_w(6, 0): True,
-            var_w(5, 1): True,
-            var_w(4, 2): True,
-            var_w(3, 3): True,
-            var_w(3, 4): True,
-            var_w(2, 5): True,
-            var_w(2, 6): True,
-            var_b1(2, 0): True,
-            var_b1(2, 1): True,
-            var_b1(2, 2): True,
-            var_b1(2, 3): True,
-            var_b1(1, 4): True,
-            var_b1(1, 5): True,
-            var_b1(0, 6): True,
-            var_b1(0, self.T - 1): True,
-            var_b2(9, 0): True,
-            # var_b2(10, self.T - 1): True
-            var_do("m,g", 0): True,
-            var_do("m,g", 1): True,
-            var_do("m,g", 2): True,
-            var_do("p,g", 3): True,
-            var_do("m,g", 4): True,
-            var_do("p,g", 5): True,
-        }
-
-        is_sat, unsat_clauses = self.verify(true_instaces, clauses)
-        for unsat_clause in unsat_clauses:
-            print(unsat_clause[1])
-            print(
-                [
-                    ("NOT " if unsat_clause[0][i] < 0 else "") + m
-                    for i, m in enumerate(
-                        self.decode_variables([abs(v) for v in unsat_clause[0]])
-                    )
-                ]
-            )
-
-        output = self.solve()
-
-        result = self.parse_output(output)
+            for unsat_clause in unsat_clauses:
+                print(unsat_clause[1])
+                print([Var.decode(v) for v in unsat_clause[1]])
 
         for line in result:
             print(line)
@@ -212,5 +256,5 @@ class RubiksCubeSolver:
 # =====================
 # EXÉCUTION DU SOLVEUR
 # =====================
-solver = SokorridorSolver()
+solver = RubiksCubeSolver()
 solver.run()
