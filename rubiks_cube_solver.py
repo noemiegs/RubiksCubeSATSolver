@@ -152,11 +152,11 @@ class RubiksCubeSolver:
         self.cnf_filename = cnf_filename  # Fichier CNF
         self.var_mapping = {}  # Correspondance des variables SAT
 
-    def generate_initial_final_clauses(self) -> list[NamedClause]:
+    def generate_clauses(self) -> list[NamedClause]:
         """
         Génère les clauses.
         """
-        clauses: list[NamedClause] = []
+        clauses: list[NamedClause] = self.generate_initial_clauses()
 
         # Etat initial du cube
 
@@ -320,7 +320,7 @@ class RubiksCubeSolver:
             ],
         )
 
-    def generate_initial_state(self) -> list[NamedClause]:
+    def generate_initial_clauses(self) -> list[NamedClause]:
         clauses: list[NamedClause] = []
 
         for cube_pos in range(8):
