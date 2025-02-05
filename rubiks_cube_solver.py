@@ -22,16 +22,22 @@ class Var:
         return cube_pos % 2, (cube_pos // 2) % 2, (cube_pos // 4) % 2
 
     @staticmethod
+    def will_rotate(c_x: int, c_y: int, c_z: int, face: Face) -> bool:
+        if face == Face.RIGHT:
+            return c_x == 1
+        if face == Face.BOTTOM:
+            return c_y == 1
+        if face == Face.BACK:
+            return c_z == 1
+        return False
+
+    @staticmethod
     def rotate_x(face: Face, direction: Direction, cube_pos: CubePos) -> CubePos:
         assert face in {Face.RIGHT, Face.BOTTOM, Face.BACK}, f"Invalid face: {face}"
 
-        c_x, c_y, c_z = RubiksCubeSolver.Var.g(cube_pos)
+        c_x, c_y, c_z = Var.g(cube_pos)
 
-        if face == Face.RIGHT and c_x == 0:
-            return cube_pos
-        if face == Face.BOTTOM and c_y == 0:
-            return cube_pos
-        if face == Face.BACK and c_z == 0:
+        if not Var.will_rotate(c_x, c_y, c_z, face):
             return cube_pos
 
         def rotate_1_x(face: Face, c_x: int, c_y: int, c_z: int) -> CubePos:
@@ -46,12 +52,12 @@ class Var:
         if direction == Direction.CLOCKWISE:
             return rotate_1_x(face, c_x, c_y, c_z)
         if direction == Direction.HALF_TURN:
-            return rotate_1_x(face, *g(rotate_1_x(face, c_x, c_y, c_z)))
+            return rotate_1_x(face, *Var.g(rotate_1_x(face, c_x, c_y, c_z)))
         if direction == Direction.COUNTERCLOCKWISE:
             return rotate_1_x(
-                face, *g(rotate_1_x(face, *g(rotate_1_x(face, c_x, c_y, c_z))))
+                face, *Var.g(rotate_1_x(face, *Var.g(rotate_1_x(face, c_x, c_y, c_z))))
             )
-    
+
     @staticmethod
     def rotate_theta(
         face: Face,
@@ -59,25 +65,30 @@ class Var:
         cube_pos: CubePos,
         orientation: Orientation,
     ) -> Orientation:
-        assert face in {Face.RIGHT, Face.BOTTOM, Face.BACK}, f"Invalid face: {face}"
-
         if direction == Direction.HALF_TURN:
             return orientation
 
-        def s(
-            i: Orientation, j: Orientation, orientation: Orientation
-        ) -> Orientation:
+        if not Var.will_rotate(*Var.g(cube_pos), face):
+            return orientation
+
+        def s(i: Orientation, j: Orientation, orientation: Orientation) -> Orientation:
             if orientation == i:
                 return j
             if orientation == j:
                 return i
             return orientation
 
+        if face == Face.RIGHT:
+            return s(0, 2, orientation)
+        if face == Face.BOTTOM:
+            return s(0, 1, orientation)
+        if face == Face.BACK:
+            return s(1, 2, orientation)
+        raise ValueError(f"Invalid face: {face}")
+
 
 class RubiksCubeSolver:
     t_max: int
-            
-            
 
     def __init__(
         self, rubiks_cube: RubiksCube, t_max: int = 11, cnf_filename="rubiks_cube.cnf"
@@ -128,8 +139,7 @@ class RubiksCubeSolver:
 
         return self.decode_variables(variables)
 
-    def decode_variables(self, variables):
-        ...
+    def decode_variables(self, variables): ...
 
     def run(self):
         """
