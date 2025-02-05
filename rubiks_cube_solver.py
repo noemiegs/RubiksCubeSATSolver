@@ -142,7 +142,7 @@ class Var:
 
 
 class RubiksCubeSolver:
-    t_max: int
+    t_max: int = 11
 
     def __init__(
         self, rubiks_cube: RubiksCube, t_max: int = 11, cnf_filename="rubiks_cube.cnf"

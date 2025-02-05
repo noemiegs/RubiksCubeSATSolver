@@ -52,7 +52,9 @@ class Direction(Enum):
             Direction.HALF_TURN: "2",
             Direction.COUNTERCLOCKWISE: "'",
         }[self]
-
+    
+    def __lt__(self, other: "Direction") -> bool:
+        return self.value < other.value
 
 class Face(Enum):
     FRONT = 0
@@ -92,6 +94,9 @@ class Face(Enum):
             Face.TOP: "U",
             Face.BOTTOM: "D",
         }[self]
+    
+    def __lt__(self, other: "Face") -> bool:
+        return self.value < other.value
 
 
 class RubiksCube:
