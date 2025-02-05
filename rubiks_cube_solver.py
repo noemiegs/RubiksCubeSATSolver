@@ -175,71 +175,56 @@ class RubiksCubeSolver:
                 (f"Etat final, orientation du cube {i}", [Var.theta(i, 0, self.t_max)])
             )
 
-        # Transitions des positions
         for t in range(1, self.t_max + 1):
-            for id in range(8):
-                id = cast(CubePos, id)
-                for c in range(8):
-                    c = cast(CubePos, c)
-                    for f in [Face.RIGHT, Face.BOTTOM, Face.BACK]:
-                        for d in Direction:
+            for f in [Face.RIGHT, Face.BOTTOM, Face.BACK]:
+                for d in Direction:
+                    for c in range(8):
+                        c = cast(CubePos, c)
+
+                        c_prime = Var.rotate_x(f, d, c)
+                        action = Var.a(f, d, t)
+
+                        # Transitions des positions
+                        for id in range(8):
+                            id = cast(CubePos, id)
+
+                            x_prime = Var.x(c_prime, id, t)
+                            x = Var.x(c, id, t - 1)
+
                             clauses.append(
                                 (
                                     f"Transition des positions, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 1",
-                                    [
-                                        Var.x(Var.rotate_x(f, d, c), id, t),
-                                        -Var.x(c, id, t - 1),
-                                        -Var.a(f, d, t),
-                                    ],
+                                    [x_prime, -x, -action],
                                 )
                             )
 
                             clauses.append(
                                 (
                                     f"Transition des positions, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 2",
-                                    [
-                                        -Var.x(Var.rotate_x(f, d, c), id, t),
-                                        Var.x(c, id, t - 1),
-                                        -Var.a(f, d, t),
-                                    ],
+                                    [-x_prime, x, -action],
                                 )
                             )
 
-        # Transitions des rotations
-        for t in range(1, self.t_max + 1):
-            for c in range(8):
-                c = cast(CubePos, c)
-                for f in [Face.RIGHT, Face.BOTTOM, Face.BACK]:
-                    for d in Direction:
+                        # Transitions des rotations
                         for o in range(3):
                             o = cast(Orientation, o)
+
+                            theta_prime = Var.theta(
+                                c_prime, Var.rotate_theta(f, d, c, o), t
+                            )
+                            theta = Var.theta(c, o, t - 1)
+
                             clauses.append(
                                 (
                                     f"Transition des orientations, case_cube {c}, orientation {o}, face {f},  direction {d}, temps {t}, clause 1",
-                                    [
-                                        Var.theta(
-                                            Var.rotate_x(f, d, c),
-                                            Var.rotate_theta(f, d, c, o),
-                                            t,
-                                        ),
-                                        -Var.theta(c, o, t - 1),
-                                        -Var.a(f, d, t),
-                                    ],
+                                    [theta_prime, -theta, -action],
                                 )
                             )
 
                             clauses.append(
                                 (
                                     f"Transition des orientations, case_cube {c}, orientation {o}, face {f},  direction {d}, temps {t}, clause 2",
-                                    [
-                                        -Var.theta(
-                                            Var.rotate_x(f, d, c),
-                                            Var.rotate_theta(f, d, c, o),
-                                            t,
-                                        ),
-                                        Var.theta(c, o, t - 1),
-                                        -Var.a(f, d, t),
-                                    ],
+                                    [-theta_prime, theta, -action],
                                 )
                             )
 
@@ -388,7 +373,7 @@ class RubiksCubeSolver:
         if true_instance is not None and not sat:
             sat, unsat_clauses = self.verify(true_instance, clauses)
 
-            for unsat_clause in unsat_clauses:
+            for unsat_clause in unsat_clauses[-8:]:
                 print(unsat_clause[0])
                 print([Var.decode(v) for v in unsat_clause[1]])
                 print()

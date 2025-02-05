@@ -12,15 +12,16 @@ def generate_true_instance(cube: RubiksCube, moves: list[str]) -> dict[int, bool
 
             colors = cube.get_colors_from_pos(Var.g(cube_pos))
             cube_id, orientation = cube.colors_to_id_and_orientation(colors)
-
+            
             true_instance[Var.x(cube_pos, cube_id, t)] = True
             true_instance[Var.theta(cube_pos, orientation, t)] = True
-
+        
         face, direction = cube.parse_move(moves[t])
 
         cube.rotate(face, direction)
 
         true_instance[Var.a(face, direction, t + 1)] = True
+        
 
     for cube_pos in range(8):
         cube_pos = cast(CubePos, cube_pos)
@@ -44,7 +45,7 @@ def reverse_moves(moves: list[str]) -> list[str]:
 
 def main(size: Size = (2, 2, 2)):
     rubiks_cube = RubiksCube(size)
-    moves = rubiks_cube.shuffle(11, faces=(Face.BACK, Face.RIGHT, Face.BOTTOM))
+    moves = rubiks_cube.shuffle(1, faces=(Face.BACK, Face.RIGHT, Face.BOTTOM))
 
     true_instance = generate_true_instance(rubiks_cube.copy(), reverse_moves(moves))
 

@@ -158,17 +158,17 @@ class RubiksCube:
         return (
             Color(
                 self.faces[Face.FRONT if pos[2] == 0 else Face.BACK][
-                    pos[0] if pos[2] == 0 else 1 - pos[0], pos[1]
+                    pos[0] if pos[2] == 0 else (1 - pos[0]), pos[1]
                 ]
             ),
             Color(
                 self.faces[Face.LEFT if pos[0] == 0 else Face.RIGHT][
-                    1 - pos[2] if pos[0] else pos[2], pos[1]
+                    (1 - pos[2]) if pos[0] == 0 else pos[2], pos[1]
                 ]
             ),
             Color(
                 self.faces[Face.TOP if pos[1] == 0 else Face.BOTTOM][
-                    pos[0], 1 - pos[2] if pos[1] else pos[2]
+                    pos[0], (1 - pos[2]) if pos[1] == 0 else pos[2]
                 ]
             ),
         )
