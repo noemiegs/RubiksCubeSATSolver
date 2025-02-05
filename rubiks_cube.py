@@ -328,10 +328,12 @@ class RubiksCube:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-                elif event.type == pygame.MOUSEBUTTONBOTTOM:
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                # elif event.type == pygame.MOUSEBUTTONBOTTOM:                    
                     rotating = True
                     last_mouse_pos = pygame.mouse.get_pos()
-                elif event.type == pygame.MOUSEBUTTONTOP:
+                elif event.type == pygame.MOUSEBUTTONUP:
+                # elif event.type == pygame.MOUSEBUTTONTOP:  
                     rotating = False
                     last_mouse_pos = None
 
