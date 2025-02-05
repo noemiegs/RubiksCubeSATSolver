@@ -210,8 +210,31 @@ class RubiksCubeSolver:
         clauses: list[NamedClause] = []
 
         for cube_pos in range(8):
-            for cube_id in range(3):
-                clauses.append(("Initial state", [Var.x(cube_pos, cube_id, 0)]))
+            cube_pos = cast(CubePos, cube_pos)
+
+            colors = self.rubiks_cube.get_colors_from_pos(Var.g(cube_pos))
+            real_cube_id, real_orientation = (
+                self.rubiks_cube.colors_to_id_and_orientation(colors)
+            )
+
+            for cube_id in range(8):
+                cube_id = cast(CubePos, cube_id)
+
+                sign = 1 if cube_id == real_cube_id else -1
+                clauses.append(
+                    ("Initial state position", [sign * Var.x(cube_pos, cube_id, 0)])
+                )
+
+            for orientation in range(3):
+                orientation = cast(Orientation, orientation)
+
+                sign = 1 if orientation == real_orientation else -1
+                clauses.append(
+                    (
+                        "Initial state orientation",
+                        [sign * Var.theta(cube_pos, orientation, 0)],
+                    )
+                )
 
         return clauses
 
@@ -262,5 +285,9 @@ class RubiksCubeSolver:
 # =====================
 # EXÉCUTION DU SOLVEUR
 # =====================
-solver = RubiksCubeSolver()
+
+rubiks_cube = RubiksCube((2, 2, 2))
+rubiks_cube.shuffle(10)
+
+solver = RubiksCubeSolver(rubiks_cube)
 solver.run()
