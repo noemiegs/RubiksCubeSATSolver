@@ -3,7 +3,7 @@ import numpy as np
 import pygame
 from math import cos, sin, radians
 import random
-from typing import Literal
+from typing import Literal, cast
 
 
 WIDTH, HEIGHT = 600, 600
@@ -105,12 +105,13 @@ class RubiksCube:
         - solve it and return the list of rotations using standard notation
         !
         - NOT IMPLEMENTED YET
-        
+
     - show()
         - run a simulator to view the rubik's cube in 3D
-    
-    
+
+
     """
+
     def __init__(self, size: tuple[int, int, int]) -> None:
         self.size = size
         self.faces = {
@@ -121,9 +122,50 @@ class RubiksCube:
             Face.TOP: np.full((size[0], size[2]), Color.WHITE.value, dtype=np.int8),
             Face.BOTTOM: np.full((size[0], size[2]), Color.YELLOW.value, dtype=np.int8),
         }
-    
-    def color_to_id_and_orientation(self, color: int) -> tuple[int, int]:
-    
+
+    def get_colors_from_pos(
+        self, pos: tuple[int, int, int]
+    ) -> tuple[Color, Color, Color]:
+        """
+        Get the colors of the cube at position pos (front/back, left/right, up/down)
+        """
+        return (
+            Color(
+                self.faces[Face.FRONT if pos[2] == 0 else Face.BACK][
+                    pos[0] if pos[2] == 0 else 1 - pos[0], pos[1]
+                ]
+            ),
+            Color(
+                self.faces[Face.LEFT if pos[0] == 0 else Face.RIGHT][
+                    1 - pos[2] if pos[0] else pos[2], pos[1]
+                ]
+            ),
+            Color(
+                self.faces[Face.TOP if pos[1] == 0 else Face.BOTTOM][
+                    pos[0], 1 - pos[2] if pos[1] else pos[2]
+                ]
+            ),
+        )
+
+    def colors_to_id_and_orientation(
+        self, colors: tuple[Color, Color, Color]
+    ) -> tuple[CubePos, Orientation]:
+        """
+        Convert the colors of a corner piece to its id and orientation
+
+        colors: tuple of 3 colors of the corner piece (front/back, left/right, up/down)
+        """
+        cube_pos = (
+            int(Color.GREEN in colors)
+            + 2 * int(Color.ORANGE in colors)
+            + 4 * int(Color.YELLOW in colors)
+        )
+        orientation = np.argmax(
+            [color in (Color.WHITE, Color.YELLOW) for color in colors]
+        )
+
+        return cast(CubePos, cube_pos), cast(Orientation, orientation)
+
     def _up_face_and_slice(self, face: Face) -> tuple[Face, slice]:
         return {
             Face.FRONT: (Face.TOP, np.s_[:, self.size[2] - 1]),
@@ -335,11 +377,11 @@ class RubiksCube:
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type == pygame.MOUSEBUTTONDOWN:
-                # elif event.type == pygame.MOUSEBUTTONBOTTOM:                    
+                    # elif event.type == pygame.MOUSEBUTTONBOTTOM:
                     rotating = True
                     last_mouse_pos = pygame.mouse.get_pos()
                 elif event.type == pygame.MOUSEBUTTONUP:
-                # elif event.type == pygame.MOUSEBUTTONTOP:  
+                    # elif event.type == pygame.MOUSEBUTTONTOP:
                     rotating = False
                     last_mouse_pos = None
 
@@ -375,7 +417,7 @@ def main():
 
     cube = RubiksCube(CUBE_SIZE)
     # cube.shuffle()
-    
+
     cube.show()
 
 
