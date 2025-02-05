@@ -23,7 +23,7 @@ class Var:
 
     @staticmethod
     def a(face: Face, direction: Direction, t: int) -> int:
-        assert t <= RubiksCubeSolver.t_max, f"Invalid time: {t}"
+        assert 0 < t <= RubiksCubeSolver.t_max, f"Invalid time: {t}"
 
         face_idx = {
             Face.RIGHT: 0,
@@ -49,16 +49,17 @@ class Var:
         prefix = "not " if var < 0 else ""
         var = abs(var)
 
-        if var <= 64 * RubiksCubeSolver.t_max:
+        if var <= 64 * (RubiksCubeSolver.t_max + 1):
             t = (var - 1) // 64
             cube_pos = (var - 1) % 64
             cube_id = cube_pos // 8
             cube_pos %= 8
             return prefix + f"x({cube_pos}, {cube_id}, {t})"
 
-        if var <= 64 * RubiksCubeSolver.t_max + 24 * RubiksCubeSolver.t_max:
-            t = (var - 1) // 24
-            cube_pos = (var - 1) % 24
+        if var <= (64 + 24) * (RubiksCubeSolver.t_max + 1):
+            new_var = var - 64 * (RubiksCubeSolver.t_max + 1) - 1
+            t = new_var // 24
+            cube_pos = new_var % 24
             orientation = cube_pos // 8
             cube_pos %= 8
             return prefix + f"theta({cube_pos}, {orientation}, {t})"
@@ -73,9 +74,10 @@ class Var:
     @staticmethod
     def get_action_from(a: int) -> tuple[Face, Direction, int]:
         assert Var.is_action(a), f"Invalid action: {a}, {Var.decode(a)}"
-
-        t = (a - 1) // 9
-        a = (a - 1) % 9
+        
+        a -= (64 + 24) * (RubiksCubeSolver.t_max + 1) + 1
+        t = a // 9
+        a = a % 9
         face = a // 3
         direction = a % 3
         return Face(face), Direction(direction), t
@@ -374,7 +376,7 @@ class RubiksCubeSolver:
 
         return clauses
 
-    def run(self, true_instance: dict[int, bool] | None = None) -> list[Action]:
+    def run(self, true_instance: dict[int, bool] | None = None) -> tuple[bool, list[Action]]:
         """
         Gère tout le processus : génération du CNF, exécution du solveur et extraction du résultat.
 
@@ -393,4 +395,4 @@ class RubiksCubeSolver:
         for line in result:
             print(line)
 
-        return actions
+        return sat, actions
