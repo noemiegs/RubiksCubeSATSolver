@@ -207,33 +207,39 @@ class RubiksCubeSolver:
 
         # Transitions des rotations
         for t in range(1, self.t_max + 1):
-            for c in range(8):
-                c = cast(CubePos, c)
-                for f in [Face.RIGHT, Face.BOTTOM, Face.BACK]:
-                    for d in Direction:
-                        for o in range(3):
-                            o = cast(Orientation, o)
-
-                            c_prime = Var.rotate_x(f, d, c)
-                            o_prime = Var.rotate_theta(f, d, c, o)
-
-                            theta_prime = Var.theta(c_prime, o_prime, t)
-                            theta = Var.theta(c, o, t - 1)
-                            action = Var.a(f, d, t)
-
-                            clauses.append(
-                                (
-                                    f"Transition des orientations, cube {c}, orientation {o}, face {f},  direction {d}, temps {t}, clause 1",
-                                    [theta_prime, -theta, -action],
+            for id in range(8):
+                id = cast(CubePos, id)
+                for c in range(8):
+                    c = cast(CubePos, c)
+                    for f in [Face.RIGHT, Face.BOTTOM, Face.BACK]:
+                        for d in Direction:
+                            for o in range(3):
+                                o = cast(Orientation, o)
+                                clauses.append(
+                                    (
+                                        f"Transition des orientations, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 1",
+                                        [
+                                            Var.theta(
+                                                id, Var.rotate_theta(f, d, c, o), t
+                                            ),
+                                            -Var.theta(c, o, t - 1),
+                                            -Var.a(f, d, t),
+                                        ],
+                                    )
                                 )
-                            )
 
-                            clauses.append(
-                                (
-                                    f"Transition des orientations, cube {c}, orientation {o}, face {f},  direction {d}, temps {t}, clause 2",
-                                    [-theta_prime, theta, -action],
+                                clauses.append(
+                                    (
+                                        f"Transition des orientations, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 2",
+                                        [
+                                            -Var.theta(
+                                                id, Var.rotate_theta(f, d, c, o), t
+                                            ),
+                                            Var.theta(c, o, t - 1),
+                                            -Var.a(f, d, t),
+                                        ],
+                                    )
                                 )
-                            )
 
             for f, d in product([Face.RIGHT, Face.BOTTOM, Face.BACK], Direction):
                 for f_prime, d_prime in product(
