@@ -298,7 +298,8 @@ class RubiksCube:
 
         return moves_str
 
-    def parse_move(self, s: str) -> tuple[Face, Direction]:
+    @staticmethod
+    def parse_move(s: str) -> tuple[Face, Direction]:
         return Face.from_str(s[0]), Direction.from_str(s[1:])
 
     def apply_rotations(self, rotations: list[str]) -> None:
