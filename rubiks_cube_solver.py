@@ -74,8 +74,8 @@ class Var:
     def get_action_from(a: int) -> tuple[Face, Direction, int]:
         assert Var.is_action(a), f"Invalid action: {a}, {Var.decode(a)}"
 
-        t = (a - 1) // 24
-        a = (a - 1) % 24
+        t = (a - 1) // 9
+        a = (a - 1) % 9
         face = a // 3
         direction = a % 3
         return Face(face), Direction(direction), t
@@ -312,8 +312,8 @@ class RubiksCubeSolver:
             capture_output=True,
             text=True,
         )
-        print(result.stdout)
-        # return self.parse_output(result.stdout)
+        
+        return self.parse_output(result.stdout)
 
     def parse_output(self, output: str) -> tuple[bool, list[str], list[Action]]:
         """
