@@ -156,7 +156,7 @@ class RubiksCubeSolver:
         """
         Génère les clauses.
         """
-        clauses: list[NamedClause] = []
+        clauses: list[NamedClause] = self.generate_initial_clauses()
 
         # Etat initial du cube
 
@@ -330,7 +330,7 @@ class RubiksCubeSolver:
             ],
         )
 
-    def generate_initial_state(self) -> list[NamedClause]:
+    def generate_initial_clauses(self) -> list[NamedClause]:
         clauses: list[NamedClause] = []
 
         for cube_pos in range(8):
