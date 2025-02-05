@@ -180,95 +180,95 @@ class RubiksCubeSolver:
             )
 
         # Transitions des positions
-        # for t in range(1, self.t_max + 1):
-        #     for id in range(8):
-        #         id = cast(CubePos, id)
-        #         for c in range(8):
-        #             c = cast(CubePos, c)
-        #             for f in [Face.RIGHT, Face.BOTTOM, Face.BACK]:
-        #                 for d in Direction:
-        #                     clauses.append(
-        #                         (
-        #                             f"Transition des positions, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 1",
-        #                             [
-        #                                 Var.x(Var.rotate_x(f, d, c), id, t),
-        #                                 -Var.x(c, id, t - 1),
-        #                                 -Var.a(f, d, t),
-        #                             ],
-        #                         )
-        #                     )
+        for t in range(1, self.t_max + 1):
+            for id in range(8):
+                id = cast(CubePos, id)
+                for c in range(8):
+                    c = cast(CubePos, c)
+                    for f in [Face.RIGHT, Face.BOTTOM, Face.BACK]:
+                        for d in Direction:
+                            clauses.append(
+                                (
+                                    f"Transition des positions, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 1",
+                                    [
+                                        Var.x(Var.rotate_x(f, d, c), id, t),
+                                        -Var.x(c, id, t - 1),
+                                        -Var.a(f, d, t),
+                                    ],
+                                )
+                            )
 
-        #                     clauses.append(
-        #                         (
-        #                             f"Transition des positions, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 2",
-        #                             [
-        #                                 -Var.x(Var.rotate_x(f, d, c), id, t),
-        #                                 Var.x(c, id, t - 1),
-        #                                 -Var.a(f, d, t),
-        #                             ],
-        #                         )
-        #                     )
+                            clauses.append(
+                                (
+                                    f"Transition des positions, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 2",
+                                    [
+                                        -Var.x(Var.rotate_x(f, d, c), id, t),
+                                        Var.x(c, id, t - 1),
+                                        -Var.a(f, d, t),
+                                    ],
+                                )
+                            )
 
         # Transitions des rotations
-        # for t in range(1, self.t_max + 1):
-        #     for id in range(8):
-        #         id = cast(CubePos, id)
-        #         for c in range(8):
-        #             c = cast(CubePos, c)
-        #             for f in [Face.RIGHT, Face.BOTTOM, Face.BACK]:
-        #                 for d in Direction:
-        #                     for o in range(3):
-        #                         o = cast(Orientation, o)
-        #                         clauses.append(
-        #                             (
-        #                                 f"Transition des orientations, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 1",
-        #                                 [
-        #                                     Var.theta(
-        #                                         id, Var.rotate_theta(f, d, c, o), t
-        #                                     ),
-        #                                     -Var.theta(c, o, t - 1),
-        #                                     -Var.a(f, d, t),
-        #                                 ],
-        #                             )
-        #                         )
+        for t in range(1, self.t_max + 1):
+            for id in range(8):
+                id = cast(CubePos, id)
+                for c in range(8):
+                    c = cast(CubePos, c)
+                    for f in [Face.RIGHT, Face.BOTTOM, Face.BACK]:
+                        for d in Direction:
+                            for o in range(3):
+                                o = cast(Orientation, o)
+                                clauses.append(
+                                    (
+                                        f"Transition des orientations, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 1",
+                                        [
+                                            Var.theta(
+                                                id, Var.rotate_theta(f, d, c, o), t
+                                            ),
+                                            -Var.theta(c, o, t - 1),
+                                            -Var.a(f, d, t),
+                                        ],
+                                    )
+                                )
 
-        #                         clauses.append(
-        #                             (
-        #                                 f"Transition des orientations, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 2",
-        #                                 [
-        #                                     -Var.theta(
-        #                                         id, Var.rotate_theta(f, d, c, o), t
-        #                                     ),
-        #                                     Var.theta(c, o, t - 1),
-        #                                     -Var.a(f, d, t),
-        #                                 ],
-        #                             )
-        #                         )
+                                clauses.append(
+                                    (
+                                        f"Transition des orientations, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 2",
+                                        [
+                                            -Var.theta(
+                                                id, Var.rotate_theta(f, d, c, o), t
+                                            ),
+                                            Var.theta(c, o, t - 1),
+                                            -Var.a(f, d, t),
+                                        ],
+                                    )
+                                )
 
-            # for f, d in product([Face.RIGHT, Face.BOTTOM, Face.BACK], Direction):
-            #     for f_prime, d_prime in product(
-            #         [Face.RIGHT, Face.BOTTOM, Face.BACK], Direction
-            #     ):
-            #         if (f, d) < (f_prime, d_prime):
-            #             clauses.append(
-            #                 (
-            #                     f"Interdiction de rotations multiples, temps {t}, face {f}, {f_prime} et direction {d}, {d_prime}",
-            #                     [-Var.a(f, d, t), -Var.a(f_prime, d_prime, t)],
-            #                 )
-            #             )
+            for f, d in product([Face.RIGHT, Face.BOTTOM, Face.BACK], Direction):
+                for f_prime, d_prime in product(
+                    [Face.RIGHT, Face.BOTTOM, Face.BACK], Direction
+                ):
+                    if (f, d) < (f_prime, d_prime):
+                        clauses.append(
+                            (
+                                f"Interdiction de rotations multiples, temps {t}, face {f}, {f_prime} et direction {d}, {d_prime}",
+                                [-Var.a(f, d, t), -Var.a(f_prime, d_prime, t)],
+                            )
+                        )
 
             # Ajout des clauses pour forcer une action par étape
-            # clauses.append(
-            #     (
-            #         f"Action obligatoire à chaque étape, temps {t}",
-            #         [
-            #             Var.a(f, d, t)
-            #             for (f, d) in product(
-            #                 [Face.RIGHT, Face.BOTTOM, Face.BACK], Direction
-            #             )
-            #         ],
-            #     )
-            # )
+            clauses.append(
+                (
+                    f"Action obligatoire à chaque étape, temps {t}",
+                    [
+                        Var.a(f, d, t)
+                        for (f, d) in product(
+                            [Face.RIGHT, Face.BOTTOM, Face.BACK], Direction
+                        )
+                    ],
+                )
+            )
 
         return clauses
 
