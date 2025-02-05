@@ -282,15 +282,20 @@ class RubiksCube:
         for i in range(direction.value + 1):
             self._rotate_clockwise(face)
 
-    def shuffle(self, n: int = 100) -> list[str]:
+    def shuffle(
+        self,
+        n: int = 100,
+        faces: tuple[Face, ...] = tuple(Face),
+        directions: tuple[Direction, ...] = tuple(Direction),
+    ) -> list[str]:
         moves_str: list[str] = []
 
         for _ in range(n):
-            face = random.choice(list(Face))
-            direction = random.choice(list(Direction))
+            face = random.choice(faces)
+            direction = random.choice(directions)
             while not self.can_rotate(face, direction):
-                face = random.choice(list(Face))
-                direction = random.choice(list(Direction))
+                face = random.choice(faces)
+                direction = random.choice(directions)
 
             self.rotate(face, direction)
 
