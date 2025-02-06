@@ -38,12 +38,14 @@ def main(size: Size = (2, 2, 2)):
     rubiks_cube = RubiksCube(size)
     rubiks_cube.shuffle(faces=(Face.BACK, Face.RIGHT, Face.BOTTOM))
 
-    solver = RubiksCubeSolver(rubiks_cube, t_max=11)
-    sat, actions = solver.run()
+    solver = RubiksCubeSolver(rubiks_cube)
+    sat, actions = solver.find_optimal()
 
     print("SATISFIABLE" if sat else "UNSATISFIABLE")
 
     if sat:
+        print(f"Solved in {len(actions)} moves")
+        
         moves = [RubiksCube.move_to_str(face, direction) for face, direction in actions]
         rubiks_cube.animate(RubiksCube.parse_moves(moves), speed=2)
 

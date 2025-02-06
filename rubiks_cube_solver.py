@@ -155,7 +155,7 @@ class RubiksCubeSolver:
         self, rubiks_cube: RubiksCube, t_max: int = 11, cnf_filename="rubiks_cube.cnf"
     ):
         self.rubiks_cube = rubiks_cube  # Cube à résoudre
-        self.t_max = t_max  # Nombre de mouvements maximum
+        RubiksCubeSolver.t_max = t_max  # Nombre de mouvements maximum
         self.cnf_filename = cnf_filename  # Fichier CNF
         self.var_mapping = {}  # Correspondance des variables SAT
 
@@ -380,5 +380,31 @@ class RubiksCubeSolver:
 
         for line in result:
             print(line)
+
+        return sat, actions
+
+    def find_optimal(
+        self, t_min: int = -1, t_max: int = 11
+    ) -> tuple[bool, list[Action]]:
+        """
+        Trouve la solution optimale.
+        """
+
+        sat: bool = False
+        actions: list[Action] = []
+
+        while t_min < t_max - 1:
+            t = (t_min + t_max) // 2
+
+            RubiksCubeSolver.t_max = t
+            sat_, actions_ = self.run()
+
+            if sat_:
+                t_max = t
+                sat = True
+                actions = actions_
+
+            else:
+                t_min = t
 
         return sat, actions
