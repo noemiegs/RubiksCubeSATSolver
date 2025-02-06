@@ -48,13 +48,12 @@ class Direction(Enum):
             "'": Direction.COUNTERCLOCKWISE,
         }[s]
 
-    @staticmethod
-    def opposite(direction: "Direction") -> "Direction":
+    def opposite(self) -> "Direction":
         return {
             Direction.CLOCKWISE: Direction.COUNTERCLOCKWISE,
             Direction.HALF_TURN: Direction.HALF_TURN,
             Direction.COUNTERCLOCKWISE: Direction.CLOCKWISE,
-        }[direction]
+        }[self]
 
     def to_str(self) -> str:
         return {
@@ -96,8 +95,7 @@ class Face(Enum):
             "D": Face.BOTTOM,
         }[s]
 
-    @staticmethod
-    def opposite(face: "Face") -> "Face":
+    def opposite(self) -> "Face":
         return {
             Face.FRONT: Face.BACK,
             Face.BACK: Face.FRONT,
@@ -105,7 +103,7 @@ class Face(Enum):
             Face.RIGHT: Face.LEFT,
             Face.TOP: Face.BOTTOM,
             Face.BOTTOM: Face.TOP,
-        }[face]
+        }[self]
 
     def to_str(self) -> str:
         return {
@@ -305,7 +303,7 @@ class RubiksCube:
         reverse_moves = []
         for face, direction in RubiksCube.parse_moves(moves)[::-1]:
             reverse_moves.append(
-                RubiksCube.move_to_str(face, Direction.opposite(direction))
+                RubiksCube.move_to_str(face, direction.opposite())
             )
         return reverse_moves
 
@@ -488,46 +486,7 @@ class RubiksCube:
         screen_size: tuple[int, int] = (600, 600),
         background_color: tuple[int, int, int] = (30, 30, 30),
     ) -> None:
-        pygame.init()
-        screen = pygame.display.set_mode(screen_size)
-        pygame.display.set_caption("3D Rubik's Cube")
-        clock = pygame.time.Clock()
-
-        running = True
-        angle_x, angle_y = 30, 30
-        rotating = False
-        last_mouse_pos = None
-
-        while running:
-            screen.fill(background_color)
-
-            self._draw(screen, angle_x, angle_y)
-
-            pygame.display.flip()
-            clock.tick(60)
-
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    rotating = True
-                    last_mouse_pos = pygame.mouse.get_pos()
-                elif event.type == pygame.MOUSEBUTTONUP:
-                    rotating = False
-                    last_mouse_pos = None
-
-            if rotating:
-                current_mouse_pos = pygame.mouse.get_pos()
-                if last_mouse_pos:
-                    dx = last_mouse_pos[0] - current_mouse_pos[0]
-                    dy = last_mouse_pos[1] - current_mouse_pos[1]
-
-                    angle_x -= dy * 0.5
-                    angle_y += dx * 0.5
-
-                    last_mouse_pos = current_mouse_pos
-
-        pygame.quit()
+        self.animate([], screen_size, background_color, speed=0)
 
     def animate(
         self,

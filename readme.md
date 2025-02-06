@@ -48,9 +48,7 @@ Par abus de notation, on notera $c' = r_x(f, d, c)$ et $o' = r_\theta(f, d, c, o
 Pour chaque face $f \in F$, on notera $C_f$ l'esemble des cube affecté par la rotation
 
 On notera la permutation entre $i$ et $j$
-<p>
-\[
-s_{i, j} :
+$$s_{i, j} :
 \begin{cases}
     O \rightarrow O \\
     o \mapsto
@@ -59,9 +57,7 @@ s_{i, j} :
         j & \text{si} \quad o = i \\
         o & \text{sinon}
     \end{cases}
-\end{cases}
-\]
-</p>
+\end{cases}$$
 
 On notera $c_x$, $c_y$ et $c_z$ les coordonnées du cube $c$
 
@@ -132,31 +128,16 @@ $$
 ### Positions
 
 L'$id$ étant définie en fonction de la position par défaut on doit avoir :
-$$
-\forall \ c, id \in C :
-    \begin{cases}
-        x_{c, id}(t_{max}) \ \ \text{si} \ \ c = id \\
-        \neg x_{c, id}(t_{max}) \ \ \text{sinon} \\
-    \end{cases}
-$$
+$$\forall \ id \in C : x_{id, id}(t_{max})$$
 
 ### Orientations
 
 Les orientations par défaut étant $o = 0$ on doit avoir :
-$$
-\forall \ c \in C :
-    \begin{cases}
-        \theta_{c, 0}(t_{max}) \\
-        \neg \theta_{c, 1}(t_{max}) \\
-        \neg \theta_{c, 2}(t_{max})
-    \end{cases}
-$$
+$$\forall \ c \in C : \theta_{c, 0}(t_{max})$$
 
 ## Transitions
 
 Les transitions changent à la fois l'orientation et la postion des cubes qu'elles affecte.
-
-On notera $c'$ la position et $o'$ l'orientation du cube $c$ après la rotation.
 
 On a donc $\forall \ t \in T^*$ :
 
