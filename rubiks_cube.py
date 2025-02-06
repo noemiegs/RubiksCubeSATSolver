@@ -1,9 +1,9 @@
-from enum import Enum
-from itertools import pairwise
 import numpy as np
 import pygame
-from math import cos, sin, radians
 import random
+from enum import Enum
+from itertools import pairwise
+from math import cos, sin, radians
 from typing import Literal, cast
 from colorama import Fore, Style
 
@@ -129,15 +129,10 @@ class RubiksCube:
     - apply_rotations(self, rotations: list[str]): Apply a list of rotations using standard notation
         - example : ["U'", "F2", "B", "L'", "R2"]
         - Up (anticlockwise) / Front (2x) / Back (clockwise) / Left (anticlockwise) / Right (2x)
-    - solve()
-        - solve it and return the list of rotations using standard notation
-        !
-        - NOT IMPLEMENTED YET
-
     - show()
         - run a simulator to view the rubik's cube in 3D
-
-
+    - animate(rotations: list[str], speed: float = 1)
+        - run a simulator to view the rubik's cube in 3D with animations
     """
 
     def __init__(self, size: Size) -> None:
