@@ -1,9 +1,11 @@
 from enum import Enum
+from itertools import pairwise
 import numpy as np
 import pygame
 from math import cos, sin, radians
 import random
 from typing import Literal, cast
+from colorama import Fore, Style
 
 
 WIDTH, HEIGHT = 600, 600
@@ -75,12 +77,12 @@ class Face(Enum):
 
     def get_vertices_idx(self) -> list[int]:
         return {
-            Face.FRONT: [0, 4, 6, 2],
-            Face.BACK: [5, 1, 3, 7],
-            Face.LEFT: [1, 0, 2, 3],
-            Face.RIGHT: [4, 5, 7, 6],
-            Face.TOP: [1, 5, 4, 0],
-            Face.BOTTOM: [2, 6, 7, 3],
+            Face.FRONT: [0, 1, 3, 2],
+            Face.BACK: [4, 5, 7, 6],
+            Face.LEFT: [0, 4, 6, 2],
+            Face.RIGHT: [1, 5, 7, 3],
+            Face.TOP: [0, 1, 5, 4],
+            Face.BOTTOM: [2, 3, 7, 6],
         }[self]
 
     @staticmethod
@@ -304,83 +306,187 @@ class RubiksCube:
         return moves_str
 
     @staticmethod
-    def parse_move(s: str) -> tuple[Face, Direction]:
-        return Face.from_str(s[0]), Direction.from_str(s[1:])
+    def reverse_moves(moves: list[str]) -> list[str]:
+        reverse_moves = []
+        for face, direction in RubiksCube.parse_moves(moves)[::-1]:
+            reverse_moves.append(
+                RubiksCube.move_to_str(face, Direction.opposite(direction))
+            )
+        return reverse_moves
+
+    @staticmethod
+    def move_to_str(face: Face, direction: Direction) -> str:
+        return f"{face.to_str()}{direction.to_str()}"
+
+    @staticmethod
+    def parse_move(move: str) -> tuple[Face, Direction]:
+        return Face.from_str(move[0]), Direction.from_str(move[1:])
+
+    @staticmethod
+    def parse_moves(moves: list[str]) -> list[tuple[Face, Direction]]:
+        return [RubiksCube.parse_move(move) for move in moves]
 
     def apply_rotations(self, rotations: list[str]) -> None:
         for rotation in rotations:
             self.rotate(*self.parse_move(rotation))
 
     def _draw_face(
-        self, screen: pygame.surface.Surface, colors: np.ndarray, coords: np.ndarray
+        self,
+        screen: pygame.surface.Surface,
+        coords: list[tuple[float, float, float]],
+        color: Color,
     ) -> None:
         def project_3d_to_2d(point: tuple[float, float, float], scale: float = 200):
             """Convert 3D point to 2D screen coordinates with perspective projection"""
             x, y, z = point
             factor = scale / (z + 4)  # Simple perspective division
             screen_x = int(WIDTH / 2 + x * factor)
-            screen_y = int(HEIGHT / 2 - y * factor)
+            screen_y = int(HEIGHT / 2 + y * factor)
             return screen_x, screen_y
 
-        top_left_coords = coords[0]
-        square = (coords - top_left_coords) / self.size
-        x_dir, y_dir = square[1], square[3]
-
-        for x in range(colors.shape[0]):
-            for y in range(colors.shape[1]):
-                square_coords = square + top_left_coords + x * x_dir + y * y_dir
-                screen_positions = [
-                    project_3d_to_2d(coords) for coords in square_coords
-                ]
-                pygame.draw.polygon(
-                    screen, Color(colors[x, y]).to_rgb(), screen_positions
-                )
-                pygame.draw.polygon(screen, (0, 0, 0), screen_positions, 2)
+        screen_positions = [project_3d_to_2d(coord) for coord in coords]
+        pygame.draw.polygon(screen, color.to_rgb(), screen_positions)
+        pygame.draw.polygon(screen, (0, 0, 0), screen_positions, 2)
 
     def _draw(
-        self, screen: pygame.surface.Surface, angle_x: float, angle_y: float
+        self,
+        screen: pygame.surface.Surface,
+        angle_x: float,
+        angle_y: float,
+        rotating_face: Face | None = None,
+        rotating_angle: float = 0,
     ) -> None:
         """Draw the 3D Rubik's Cube"""
 
-        def rotate_point(
-            point: tuple[float, float, float], angle_x: float, angle_y: float
-        ):
-            """Rotate a point in 3D space around X and Y axes"""
+        def rotate_x(
+            point: tuple[float, float, float], angle: float
+        ) -> tuple[float, float, float]:
+            """Rotate a point in 3D space around X-axis"""
             x, y, z = point
-            angle_x, angle_y = radians(angle_x), radians(angle_y)
-            y, z = (
-                y * cos(angle_x) - z * sin(angle_x),
-                y * sin(angle_x) + z * cos(angle_x),
-            )  # Rotate around X-axis
-            x, z = (
-                x * cos(angle_y) + z * sin(angle_y),
-                -x * sin(angle_y) + z * cos(angle_y),
-            )  # Rotate around Y-axis
+            angle = radians(angle)
+            y, z = y * cos(angle) - z * sin(angle), y * sin(angle) + z * cos(angle)
             return x, y, z
 
-        vertices_coords: list[tuple[float, float, float]] = []
+        def rotate_y(
+            point: tuple[float, float, float], angle: float
+        ) -> tuple[float, float, float]:
+            """Rotate a point in 3D space around Y-axis"""
+            x, y, z = point
+            angle = radians(angle)
+            x, z = x * cos(angle) + z * sin(angle), -x * sin(angle) + z * cos(angle)
+            return x, y, z
 
-        for x in [-1, 1]:
-            for y in [-1, 1]:
-                for z in [-1, 1]:
-                    vertices_coords.append(rotate_point((x, y, z), angle_x, angle_y))
+        def rotate_z(
+            point: tuple[float, float, float], angle: float
+        ) -> tuple[float, float, float]:
+            """Rotate a point in 3D space around Z-axis"""
+            x, y, z = point
+            angle = radians(angle)
+            x, y = x * cos(angle) - y * sin(angle), x * sin(angle) + y * cos(angle)
+            return x, y, z
 
-        faces_z_order = sorted(
-            self.faces,
-            key=lambda face: sum(
-                vertices_coords[idx][Z] for idx in face.get_vertices_idx()
-            ),
+        faces: list[tuple[list[tuple[float, float, float]], int]] = []
+
+        for cube_x, (x0, x1) in enumerate(
+            pairwise(np.linspace(-1, 1, self.size[X] + 1))
+        ):
+            for cube_y, (y0, y1) in enumerate(
+                pairwise(np.linspace(-1, 1, self.size[Y] + 1))
+            ):
+                for cube_z, (z0, z1) in enumerate(
+                    pairwise(np.linspace(-1, 1, self.size[Z] + 1))
+                ):
+                    points = [
+                        (x0, y0, z0),
+                        (x1, y0, z0),
+                        (x0, y1, z0),
+                        (x1, y1, z0),
+                        (x0, y0, z1),
+                        (x1, y0, z1),
+                        (x0, y1, z1),
+                        (x1, y1, z1),
+                    ]
+
+                    if rotating_face is not None:
+                        if rotating_face == Face.LEFT and cube_x == 0:
+                            points = [
+                                rotate_x(point, rotating_angle) for point in points
+                            ]
+                        if rotating_face == Face.RIGHT and cube_x == self.size[X] - 1:
+                            points = [
+                                rotate_x(point, rotating_angle) for point in points
+                            ]
+                        if rotating_face == Face.TOP and cube_y == 0:
+                            points = [
+                                rotate_y(point, rotating_angle) for point in points
+                            ]
+                        if rotating_face == Face.BOTTOM and cube_y == self.size[Y] - 1:
+                            points = [
+                                rotate_y(point, rotating_angle) for point in points
+                            ]
+                        if rotating_face == Face.FRONT and cube_z == 0:
+                            points = [
+                                rotate_z(point, rotating_angle) for point in points
+                            ]
+                        if rotating_face == Face.BACK and cube_z == self.size[Z] - 1:
+                            points = [
+                                rotate_z(point, rotating_angle) for point in points
+                            ]
+
+                    points = [rotate_x(point, angle_x) for point in points]
+                    points = [rotate_y(point, angle_y) for point in points]
+
+                    if cube_x == 0:
+                        faces.append(
+                            (
+                                [points[idx] for idx in Face.LEFT.get_vertices_idx()],
+                                self.faces[Face.LEFT][-cube_z - 1, cube_y],
+                            )
+                        )
+                    if cube_x == self.size[X] - 1:
+                        faces.append(
+                            (
+                                [points[idx] for idx in Face.RIGHT.get_vertices_idx()],
+                                self.faces[Face.RIGHT][cube_z, cube_y],
+                            )
+                        )
+                    if cube_y == 0:
+                        faces.append(
+                            (
+                                [points[idx] for idx in Face.TOP.get_vertices_idx()],
+                                self.faces[Face.TOP][cube_x, -cube_z - 1],
+                            )
+                        )
+                    if cube_y == self.size[Y] - 1:
+                        faces.append(
+                            (
+                                [points[idx] for idx in Face.BOTTOM.get_vertices_idx()],
+                                self.faces[Face.BOTTOM][cube_x, cube_z],
+                            )
+                        )
+                    if cube_z == 0:
+                        faces.append(
+                            (
+                                [points[idx] for idx in Face.FRONT.get_vertices_idx()],
+                                self.faces[Face.FRONT][cube_x, cube_y],
+                            )
+                        )
+                    if cube_z == self.size[Z] - 1:
+                        faces.append(
+                            (
+                                [points[idx] for idx in Face.BACK.get_vertices_idx()],
+                                self.faces[Face.BACK][-cube_x - 1, cube_y],
+                            )
+                        )
+
+        faces_ordered = sorted(
+            faces,
+            key=lambda face: sum(coord[Z] for coord in face[0]),
             reverse=True,
         )
 
-        for face in faces_z_order:
-            self._draw_face(
-                screen,
-                self.faces[face],
-                coords=np.array(
-                    [vertices_coords[idx] for idx in face.get_vertices_idx()]
-                ),
-            )
+        for coords, color in faces_ordered:
+            self._draw_face(screen, coords, Color(color))
 
     def show(
         self,
@@ -409,11 +515,9 @@ class RubiksCube:
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type == pygame.MOUSEBUTTONDOWN:
-                    # elif event.type == pygame.MOUSEBUTTONBOTTOM:
                     rotating = True
                     last_mouse_pos = pygame.mouse.get_pos()
                 elif event.type == pygame.MOUSEBUTTONUP:
-                    # elif event.type == pygame.MOUSEBUTTONTOP:
                     rotating = False
                     last_mouse_pos = None
 
@@ -423,7 +527,91 @@ class RubiksCube:
                     dx = last_mouse_pos[0] - current_mouse_pos[0]
                     dy = last_mouse_pos[1] - current_mouse_pos[1]
 
-                    angle_x += dy * 0.5
+                    angle_x -= dy * 0.5
+                    angle_y += dx * 0.5
+
+                    last_mouse_pos = current_mouse_pos
+
+        pygame.quit()
+
+    def animate(
+        self,
+        rotations: list[tuple[Face, Direction]],
+        screen_size: tuple[int, int] = (600, 600),
+        background_color: tuple[int, int, int] = (30, 30, 30),
+        speed: float = 1,
+    ) -> None:
+        pygame.init()
+        screen = pygame.display.set_mode(screen_size)
+        pygame.display.set_caption("3D Rubik's Cube")
+        clock = pygame.time.Clock()
+
+        running = True
+        angle_x, angle_y = 30, 30
+        rotating = False
+        last_mouse_pos = None
+
+        rotating_face = None
+        rotating_angle = 0
+        rotation_idx = 0
+        angle_direction = 1
+        target_angle = 0
+
+        while running:
+            screen.fill(background_color)
+
+            if rotation_idx < len(rotations):
+                face, direction = rotations[rotation_idx]
+
+                if rotating_face is None:
+                    rotating_face = face
+                    rotating_angle = 0
+
+                    angle_direction = {
+                        Direction.CLOCKWISE: 1,
+                        Direction.HALF_TURN: 2,
+                        Direction.COUNTERCLOCKWISE: -1,
+                    }[direction] * {
+                        Face.FRONT: 1,
+                        Face.BACK: -1,
+                        Face.LEFT: 1,
+                        Face.RIGHT: -1,
+                        Face.TOP: 1,
+                        Face.BOTTOM: -1,
+                    }[face]
+
+                    target_angle = 90 * angle_direction
+
+            if rotating_face is not None:
+                rotating_angle += speed * angle_direction
+
+                if abs(rotating_angle) >= abs(target_angle):
+                    self.rotate(face, direction)  # type: ignore
+                    rotating_face = None
+                    rotation_idx += 1
+
+            self._draw(screen, angle_x, angle_y, rotating_face, rotating_angle)
+
+            pygame.display.flip()
+            clock.tick(60)
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    rotating = True
+                    last_mouse_pos = pygame.mouse.get_pos()
+                elif event.type == pygame.MOUSEBUTTONUP:
+                    rotating = False
+                    last_mouse_pos = None
+
+            if rotating:
+                current_mouse_pos = pygame.mouse.get_pos()
+                if last_mouse_pos:
+                    dx = last_mouse_pos[0] - current_mouse_pos[0]
+                    dy = last_mouse_pos[1] - current_mouse_pos[1]
+
+                    angle_x -= dy * 0.5
                     angle_y += dx * 0.5
 
                     last_mouse_pos = current_mouse_pos
@@ -443,14 +631,50 @@ class RubiksCube:
             np.array_equal(self.faces[face], other.faces[face]) for face in self.faces
         )
 
+    def __str__(self) -> str:
+        colors = [
+            Fore.RED,
+            Fore.MAGENTA,
+            Fore.GREEN,
+            Fore.YELLOW,
+            Fore.BLUE,
+            Fore.WHITE,
+        ]
+
+        s = ""
+        for y in range(self.size[X]):
+            s += "   "
+            for x in range(self.size[X]):
+                s += f"{colors[self.faces[Face.TOP][x, y].item()]}@"
+            s += "\n"
+        for y in range(self.size[Y]):
+            for z in range(self.size[Z]):
+                s += f"{colors[self.faces[Face.LEFT][z, y].item()]}@"
+            for x in range(self.size[X]):
+                s += f"{colors[self.faces[Face.FRONT][x, y].item()]}@"
+            for z in range(self.size[Z]):
+                s += f"{colors[self.faces[Face.RIGHT][z, y].item()]}@"
+            for x in range(self.size[X]):
+                s += f"{colors[self.faces[Face.BACK][x, y].item()]}@"
+            s += "\n"
+        for y in range(self.size[X]):
+            s += "   "
+            for x in range(self.size[X]):
+                s += f"{colors[self.faces[Face.BOTTOM][x, y].item()]}@"
+            s += "\n"
+
+        s += Style.RESET_ALL
+
+        return s
+
 
 def main():
     CUBE_SIZE = (3, 3, 3)
 
     cube = RubiksCube(CUBE_SIZE)
-    # cube.shuffle()
+    moves = cube.shuffle()
 
-    cube.show()
+    cube.animate(RubiksCube.parse_moves(RubiksCube.reverse_moves(moves)), speed=25)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 from typing import cast
-from rubiks_cube import Direction, RubiksCube, Size, CubePos, Face
+from rubiks_cube import RubiksCube, Size, CubePos, Face
 from rubiks_cube_solver import RubiksCubeSolver, Var
 
 
@@ -34,28 +34,18 @@ def generate_true_instance(cube: RubiksCube, moves: list[str]) -> dict[int, bool
     return true_instance
 
 
-def reverse_moves(moves: list[str]) -> list[str]:
-    reverse_moves = []
-    for move in moves[::-1]:
-        face, direction = RubiksCube.parse_move(move)
-        reverse_moves.append(f"{face.to_str()}{Direction.opposite(direction).to_str()}")
-    return reverse_moves
-
-
 def main(size: Size = (2, 2, 2)):
     rubiks_cube = RubiksCube(size)
     rubiks_cube.shuffle(faces=(Face.BACK, Face.RIGHT, Face.BOTTOM))
 
-    solver = RubiksCubeSolver(rubiks_cube)
+    solver = RubiksCubeSolver(rubiks_cube, t_max=11)
     sat, actions = solver.run()
 
     print("SATISFIABLE" if sat else "UNSATISFIABLE")
 
     if sat:
-        for face, direction in actions:
-            rubiks_cube.rotate(face, direction)
-
-        rubiks_cube.show()
+        moves = [RubiksCube.move_to_str(face, direction) for face, direction in actions]
+        rubiks_cube.animate(RubiksCube.parse_moves(moves), speed=2)
 
 
 if __name__ == "__main__":
