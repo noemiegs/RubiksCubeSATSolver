@@ -1,4 +1,5 @@
 from typing import cast
+
 from rubiks_cube import RubiksCube, Size, CubePos, Face
 from rubiks_cube_solver import RubiksCubeSolver, Var
 
