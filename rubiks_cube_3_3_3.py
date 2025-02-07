@@ -11,11 +11,11 @@ from colorama import Fore, Style
 WIDTH, HEIGHT = 600, 600
 X, Y, Z = 0, 1, 2
 
-CoinPos = Literal[0, 1, 2, 3, 4, 5, 6, 7]
-BordPos = Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-CentrePos = Literal[0, 1, 2, 3, 4, 5]
-CoinOrientation = Literal[0, 1, 2]
-BordOrientation = Literal[0, 1]
+CornerPos = Literal[0, 1, 2, 3, 4, 5, 6, 7]
+EdgePos = Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+CenterPos = Literal[0, 1, 2, 3, 4, 5]
+CornerOrientation = Literal[0, 1, 2]
+EdgeOrientation = Literal[0, 1]
 Size = tuple[int, int, int]
 
 
@@ -120,26 +120,25 @@ class Face(Enum):
 
     def __lt__(self, other: "Face") -> bool:
         return self.value < other.value
-    
+
+
 class Middle(Enum):
     FRONT = 0
     RIGHT = 1
 
     def get_vertices_idx(self) -> list[int]:
-        return {
-        }[self]
-        
+        return {}[self]
+
     @staticmethod
-    def from_str(s: str) -> "Face":
-        return {
-        }[s]
+    def from_str(s: str) -> "Middle":
+        return {}[s]
 
     def to_str(self) -> str:
-        return {
-        }[self]
-    
-    def __lt__(self, other: "Face") -> bool:
+        return {}[self]
+
+    def __lt__(self, other: "Middle") -> bool:
         return self.value < other.value
+
 
 class RubiksCube:
     """
@@ -192,7 +191,7 @@ class RubiksCube:
 
     def colors_to_id_and_orientation(
         self, colors: tuple[Color, Color, Color]
-    ) -> tuple[CoinPos, CoinOrientation]:
+    ) -> tuple[CornerPos, CornerOrientation]:
         """
         Convert the colors of a corner piece to its id and orientation
 
@@ -207,7 +206,7 @@ class RubiksCube:
             [color in (Color.WHITE, Color.YELLOW) for color in colors]
         )
 
-        return cast(CoinPos, cube_pos), cast(CoinOrientation, orientation)
+        return cast(CornerPos, cube_pos), cast(CornerOrientation, orientation)
 
     def _up_face_and_slice(self, face: Face) -> tuple[Face, slice]:
         return {
@@ -324,9 +323,7 @@ class RubiksCube:
     def reverse_moves(moves: list[str]) -> list[str]:
         reverse_moves = []
         for face, direction in RubiksCube.parse_moves(moves)[::-1]:
-            reverse_moves.append(
-                RubiksCube.move_to_str(face, direction.opposite())
-            )
+            reverse_moves.append(RubiksCube.move_to_str(face, direction.opposite()))
         return reverse_moves
 
     @staticmethod

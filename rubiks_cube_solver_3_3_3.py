@@ -2,51 +2,83 @@ import subprocess
 from typing import Iterable, cast
 from itertools import product
 
-from rubiks_cube_3_3_3 import Direction, Face, RubiksCube, Middle, CoinPos, BordPos, CentrePos, CoinOrientation, BordOrientation
+from rubiks_cube_3_3_3 import (
+    Direction,
+    Face,
+    RubiksCube,
+    Middle,
+    CornerPos,
+    EdgePos,
+    CenterPos,
+    CornerOrientation,
+    EdgeOrientation,
+)
 
 
 Clause = list[int]
 NamedClause = tuple[str, Clause]
 ActionTuple = tuple[Face | Middle, Direction]
 
+
 class Var:
     faces = [Face.RIGHT, Face.BOTTOM, Face.BACK]
     middles = [Middle.FRONT, Middle.RIGHT]
 
-    class Coins:
+    class Corners:
         @staticmethod
-        def x(coin_pos: CoinPos, cube_id: CoinPos, t: int) -> int:
-            return coin_pos + cube_id * 8 + t * 64 + 1
+        def x(corner_pos: CornerPos, cube_id: CornerPos, t: int) -> int:
+            return corner_pos + cube_id * 8 + t * 64 + 1
 
         @staticmethod
-        def theta(coin_pos: CoinPos, coin_orientation: CoinOrientation, t: int) -> int:
+        def theta(
+            corner_pos: CornerPos, corner_orientation: CornerOrientation, t: int
+        ) -> int:
             return (
-                64 * (RubiksCubeSolver.t_max + 1) 
-                + 144 * (RubiksCubeSolver.t_max + 1) 
-                + 48 * (RubiksCubeSolver.t_max + 1) 
-                + coin_pos + coin_orientation * 8 + t * 24 + 1
+                64 * (RubiksCubeSolver.t_max + 1)
+                + 144 * (RubiksCubeSolver.t_max + 1)
+                + 48 * (RubiksCubeSolver.t_max + 1)
+                + corner_pos
+                + corner_orientation * 8
+                + t * 24
+                + 1
             )
 
-    class Bords:
+    class Edges:
         @staticmethod
-        def x(bord_pos: BordPos, cube_id: BordPos, t: int) -> int:
-            return 64 * (RubiksCubeSolver.t_max + 1) + bord_pos + cube_id*12 + t * 144 + 1
+        def x(edge_pos: EdgePos, cube_id: EdgePos, t: int) -> int:
+            return (
+                64 * (RubiksCubeSolver.t_max + 1)
+                + edge_pos
+                + cube_id * 12
+                + t * 144
+                + 1
+            )
 
         @staticmethod
-        def theta(bord_pos: BordPos, bord_orientation: BordOrientation, t: int) -> int:
+        def theta(edge_pos: EdgePos, edge_orientation: EdgeOrientation, t: int) -> int:
             return (
-                64 * (RubiksCubeSolver.t_max + 1) 
-                + 144 * (RubiksCubeSolver.t_max + 1) 
-                + 48 * (RubiksCubeSolver.t_max + 1) 
-                + 24 * (RubiksCubeSolver.t_max + 1) 
-                + bord_pos + bord_orientation * 12 + t * 24 + 1
+                64 * (RubiksCubeSolver.t_max + 1)
+                + 144 * (RubiksCubeSolver.t_max + 1)
+                + 48 * (RubiksCubeSolver.t_max + 1)
+                + 24 * (RubiksCubeSolver.t_max + 1)
+                + edge_pos
+                + edge_orientation * 12
+                + t * 24
+                + 1
             )
-    
-    class Centres: 
+
+    class Centers:
         @staticmethod
-        def x(centre_pos: CentrePos, cube_id: CentrePos, t: int) -> int:
-            return 64 * (RubiksCubeSolver.t_max + 1) + 144 * (RubiksCubeSolver.t_max + 1) + centre_pos + cube_id * 6 + t * 48 + 1
-        
+        def x(center_pos: CenterPos, cube_id: CenterPos, t: int) -> int:
+            return (
+                64 * (RubiksCubeSolver.t_max + 1)
+                + 144 * (RubiksCubeSolver.t_max + 1)
+                + center_pos
+                + cube_id * 6
+                + t * 48
+                + 1
+            )
+
     class Actions(int):
         def __init__(self, face_or_middle: Face | Middle, direction: Direction, t: int):
             self.face_or_middle = face_or_middle
@@ -55,32 +87,32 @@ class Var:
 
         def __repr__(self):
             return f"Action({self.face_or_middle}, {self.direction}, t={self.t})"
-        
+
         @staticmethod
         def a_face(face: Face, direction: Direction, t: int) -> int:
             assert 0 < t <= RubiksCubeSolver.t_max, f"Invalid time: {t}"
 
             return (
-                64 * (RubiksCubeSolver.t_max + 1) 
-                + 144 * (RubiksCubeSolver.t_max + 1) 
-                + 48 * (RubiksCubeSolver.t_max + 1) 
-                + 24 * (RubiksCubeSolver.t_max + 1) 
+                64 * (RubiksCubeSolver.t_max + 1)
+                + 144 * (RubiksCubeSolver.t_max + 1)
+                + 48 * (RubiksCubeSolver.t_max + 1)
+                + 24 * (RubiksCubeSolver.t_max + 1)
                 + 24 * (RubiksCubeSolver.t_max + 1)
                 + Var.faces.index(face) * 3
                 + direction.value
                 + t * 9
                 + 1
             )
-        
+
         @staticmethod
-        def a_middle(middle : Middle, direction: Direction, t: int) -> int:
+        def a_middle(middle: Middle, direction: Direction, t: int) -> int:
             assert 0 < t <= RubiksCubeSolver.t_max, f"Invalid time: {t}"
 
             return (
-                64 * (RubiksCubeSolver.t_max + 1) 
-                + 144 * (RubiksCubeSolver.t_max + 1) 
-                + 48 * (RubiksCubeSolver.t_max + 1) 
-                + 24 * (RubiksCubeSolver.t_max + 1) 
+                64 * (RubiksCubeSolver.t_max + 1)
+                + 144 * (RubiksCubeSolver.t_max + 1)
+                + 48 * (RubiksCubeSolver.t_max + 1)
+                + 24 * (RubiksCubeSolver.t_max + 1)
                 + 24 * (RubiksCubeSolver.t_max + 1)
                 + 9 * (RubiksCubeSolver.t_max + 1)
                 + Var.middles.index(middle) * 3
@@ -91,7 +123,7 @@ class Var:
 
         @staticmethod
         def is_action(var: int) -> bool:
-            return (64 + 144 + 48 + 24 + 24) * (RubiksCubeSolver.t_max + 1) < var 
+            return (64 + 144 + 48 + 24 + 24) * (RubiksCubeSolver.t_max + 1) < var
 
         @staticmethod
         def get_action_from(a: int) -> tuple[Face | Middle, Direction, int]:
@@ -109,7 +141,7 @@ class Var:
                 middle = a // 3
                 direction = a % 3
                 return Var.middles[middle], Direction(direction), t
-    
+
     @staticmethod
     def n_vars() -> int:
         return (64 + 144 + 48 + 24 + 24 + 9 + 6) * (RubiksCubeSolver.t_max + 1)
@@ -138,22 +170,21 @@ class Var:
         face, direction, t = Var.Actions.get_action_from(var)
         return prefix + f"a({Face(face).name}, {Direction(direction).name}, {t})"
 
-
     @staticmethod
-    def g_coin(cube_pos: CoinPos) -> tuple[int, int, int]:
+    def g_corner(cube_pos: CornerPos) -> tuple[int, int, int]:
         # To change
         return cube_pos % 2, (cube_pos // 2) % 2, (cube_pos // 4) % 2
 
     @staticmethod
-    def g_bord(cube_pos: BordPos) -> tuple[int, int, int]:
+    def g_edge(cube_pos: EdgePos) -> tuple[int, int, int]:
         # To change
         return cube_pos % 2, (cube_pos // 2) % 2, (cube_pos // 4) % 2
 
     @staticmethod
-    def g_centre(cube_pos: CentrePos) -> tuple[int, int, int]:
+    def g_center(cube_pos: CenterPos) -> tuple[int, int, int]:
         # To change
         return cube_pos % 2, (cube_pos // 2) % 2, (cube_pos // 4) % 2
-    
+
     @staticmethod
     def will_rotate(c_x: int, c_y: int, c_z: int, face: Face) -> bool:
         if face == Face.RIGHT:
@@ -163,104 +194,133 @@ class Var:
         if face == Face.BACK:
             return c_z == 1
         return False
-    
+
     @staticmethod
-    def rotate_x_coin(face: Face, direction: Direction, cube_pos: CoinPos) -> CoinPos:
+    def rotate_x_corner(
+        face: Face, direction: Direction, cube_pos: CornerPos
+    ) -> CornerPos:
         assert face in {Face.RIGHT, Face.BOTTOM, Face.BACK}, f"Invalid face: {face}"
 
-        c_x, c_y, c_z = Var.g_coin(cube_pos)
+        c_x, c_y, c_z = Var.g_corner(cube_pos)
 
         if not Var.will_rotate(c_x, c_y, c_z, face):
             return cube_pos
 
-        def rotate_1_x_coin(face: Face, c_x: int, c_y: int, c_z: int) -> CoinPos:
+        def rotate_1_x_corner(face: Face, c_x: int, c_y: int, c_z: int) -> CornerPos:
             if face == Face.RIGHT:
-                return cast(CoinPos, c_x + 2 * c_z + 4 * (1 - c_y))
+                return cast(CornerPos, c_x + 2 * c_z + 4 * (1 - c_y))
             if face == Face.BOTTOM:
-                return cast(CoinPos, (1 - c_z) + 2 * c_y + 4 * c_x)
+                return cast(CornerPos, (1 - c_z) + 2 * c_y + 4 * c_x)
             if face == Face.BACK:
-                return cast(CoinPos, c_y + 2 * (1 - c_x) + 4 * c_z)
+                return cast(CornerPos, c_y + 2 * (1 - c_x) + 4 * c_z)
             raise ValueError(f"Invalid face: {face}")
 
         if direction == Direction.CLOCKWISE:
-            return rotate_1_x_coin(face, c_x, c_y, c_z)
+            return rotate_1_x_corner(face, c_x, c_y, c_z)
         if direction == Direction.HALF_TURN:
-            return rotate_1_x_coin(face, *Var.g_coin(rotate_1_x_coin(face, c_x, c_y, c_z)))
+            return rotate_1_x_corner(
+                face, *Var.g_corner(rotate_1_x_corner(face, c_x, c_y, c_z))
+            )
         if direction == Direction.COUNTERCLOCKWISE:
-            return rotate_1_x_coin(
-                face, *Var.g_coin(rotate_1_x_coin(face, *Var.g_coin(rotate_1_x_coin(face, c_x, c_y, c_z))))
+            return rotate_1_x_corner(
+                face,
+                *Var.g_corner(
+                    rotate_1_x_corner(
+                        face, *Var.g_corner(rotate_1_x_corner(face, c_x, c_y, c_z))
+                    )
+                ),
             )
 
     @staticmethod
-    def rotate_x_bord(face: Face, direction: Direction, bord_pos: BordPos) -> BordPos:
-    # to change
+    def rotate_x_edge(face: Face, direction: Direction, edge_pos: EdgePos) -> EdgePos:
+        # to change
         assert face in {Face.RIGHT, Face.BOTTOM, Face.BACK}, f"Invalid face: {face}"
 
-        c_x, c_y, c_z = Var.g_bord(bord_pos)
+        c_x, c_y, c_z = Var.g_edge(edge_pos)
 
         if not Var.will_rotate(c_x, c_y, c_z, face):
-            return bord_pos
+            return edge_pos
 
-        def rotate_1_x_coin(face: Face, c_x: int, c_y: int, c_z: int) -> CoinPos:
+        def rotate_1_x_corner(face: Face, c_x: int, c_y: int, c_z: int) -> CornerPos:
             if face == Face.RIGHT:
-                return cast(CoinPos, c_x + 2 * c_z + 4 * (1 - c_y))
+                return cast(CornerPos, c_x + 2 * c_z + 4 * (1 - c_y))
             if face == Face.BOTTOM:
-                return cast(CoinPos, (1 - c_z) + 2 * c_y + 4 * c_x)
+                return cast(CornerPos, (1 - c_z) + 2 * c_y + 4 * c_x)
             if face == Face.BACK:
-                return cast(CoinPos, c_y + 2 * (1 - c_x) + 4 * c_z)
+                return cast(CornerPos, c_y + 2 * (1 - c_x) + 4 * c_z)
             raise ValueError(f"Invalid face: {face}")
 
         if direction == Direction.CLOCKWISE:
-            return rotate_1_x_coin(face, c_x, c_y, c_z)
+            return rotate_1_x_corner(face, c_x, c_y, c_z)
         if direction == Direction.HALF_TURN:
-            return rotate_1_x_coin(face, *Var.g_coin(rotate_1_x_coin(face, c_x, c_y, c_z)))
+            return rotate_1_x_corner(
+                face, *Var.g_corner(rotate_1_x_corner(face, c_x, c_y, c_z))
+            )
         if direction == Direction.COUNTERCLOCKWISE:
-            return rotate_1_x_coin(
-                face, *Var.g_coin(rotate_1_x_coin(face, *Var.g_coin(rotate_1_x_coin(face, c_x, c_y, c_z))))
+            return rotate_1_x_corner(
+                face,
+                *Var.g_corner(
+                    rotate_1_x_corner(
+                        face, *Var.g_corner(rotate_1_x_corner(face, c_x, c_y, c_z))
+                    )
+                ),
             )
 
     @staticmethod
-    def rotate_x_bord_middle(middle: Middle, direction: Direction, bord_pos: BordPos) -> BordPos:
-    # to change
+    def rotate_x_edge_middle(
+        middle: Middle, direction: Direction, edge_pos: EdgePos
+    ) -> EdgePos:
+        # to change
         # assert middle in {Middle.FRONT, Middle.RIGHT}, f"Invalid middle: {middle}"
 
-        c_x, c_y, c_z = Var.g_bord(bord_pos)
+        c_x, c_y, c_z = Var.g_edge(edge_pos)
 
         # if not Var.will_rotate(c_x, c_y, c_z, face):
-        #     return bord_pos
+        #     return edge_pos
 
-        def rotate_1_x_coin(middle: Middle, c_x: int, c_y: int, c_z: int) -> CoinPos:
+        def rotate_1_x_corner(
+            middle: Middle, c_x: int, c_y: int, c_z: int
+        ) -> CornerPos:
             if middle == Face.RIGHT:
-                return cast(CoinPos, c_x + 2 * c_z + 4 * (1 - c_y))
+                return cast(CornerPos, c_x + 2 * c_z + 4 * (1 - c_y))
             if middle == Face.BOTTOM:
-                return cast(CoinPos, (1 - c_z) + 2 * c_y + 4 * c_x)
+                return cast(CornerPos, (1 - c_z) + 2 * c_y + 4 * c_x)
             if middle == Face.BACK:
-                return cast(CoinPos, c_y + 2 * (1 - c_x) + 4 * c_z)
+                return cast(CornerPos, c_y + 2 * (1 - c_x) + 4 * c_z)
             raise ValueError(f"Invalid face: {middle}")
 
         if direction == Direction.CLOCKWISE:
-            return rotate_1_x_coin(middle, c_x, c_y, c_z)
+            return rotate_1_x_corner(middle, c_x, c_y, c_z)
         if direction == Direction.HALF_TURN:
-            return rotate_1_x_coin(middle, *Var.g_coin(rotate_1_x_coin(middle, c_x, c_y, c_z)))
-        if direction == Direction.COUNTERCLOCKWISE:
-            return rotate_1_x_coin(
-                middle, *Var.g_coin(rotate_1_x_coin(middle, *Var.g_coin(rotate_1_x_coin(middle, c_x, c_y, c_z))))
+            return rotate_1_x_corner(
+                middle, *Var.g_corner(rotate_1_x_corner(middle, c_x, c_y, c_z))
             )
-        
+        if direction == Direction.COUNTERCLOCKWISE:
+            return rotate_1_x_corner(
+                middle,
+                *Var.g_corner(
+                    rotate_1_x_corner(
+                        middle, *Var.g_corner(rotate_1_x_corner(middle, c_x, c_y, c_z))
+                    )
+                ),
+            )
+
     @staticmethod
-    def rotate_theta_coin(
+    def rotate_theta_corner(
         face: Face,
         direction: Direction,
-        coin_pos: CoinPos,
-        orientation: CoinOrientation,
-    ) -> CoinOrientation:
+        corner_pos: CornerPos,
+        orientation: CornerOrientation,
+    ) -> CornerOrientation:
         if direction == Direction.HALF_TURN:
             return orientation
 
-        if not Var.will_rotate(*Var.g_coin(coin_pos), face):
+        if not Var.will_rotate(*Var.g_corner(corner_pos), face):
             return orientation
 
-        def s(i: CoinOrientation, j: CoinOrientation, orientation: CoinOrientation) -> CoinOrientation:
+        def s(
+            i: CornerOrientation, j: CornerOrientation, orientation: CornerOrientation
+        ) -> CornerOrientation:
             if orientation == i:
                 return j
             if orientation == j:
@@ -276,20 +336,22 @@ class Var:
         raise ValueError(f"Invalid face: {face}")
 
     @staticmethod
-    def rotate_theta_bord_face(
+    def rotate_theta_edge_face(
         # to change
         face: Face,
         direction: Direction,
-        coin_pos: CoinPos,
-        orientation: CoinOrientation,
-    ) -> CoinOrientation:
+        corner_pos: CornerPos,
+        orientation: CornerOrientation,
+    ) -> CornerOrientation:
         if direction == Direction.HALF_TURN:
             return orientation
 
-        if not Var.will_rotate(*Var.g_coin(coin_pos), face):
+        if not Var.will_rotate(*Var.g_corner(corner_pos), face):
             return orientation
 
-        def s(i: CoinOrientation, j: CoinOrientation, orientation: CoinOrientation) -> CoinOrientation:
+        def s(
+            i: CornerOrientation, j: CornerOrientation, orientation: CornerOrientation
+        ) -> CornerOrientation:
             if orientation == i:
                 return j
             if orientation == j:
@@ -303,22 +365,24 @@ class Var:
         if face == Face.BACK:
             return s(1, 2, orientation)
         raise ValueError(f"Invalid face: {face}")
-    
+
     @staticmethod
-    def rotate_theta_bord_middle(
+    def rotate_theta_edge_middle(
         # to change
         face: Face,
         direction: Direction,
-        coin_pos: CoinPos,
-        orientation: CoinOrientation,
-    ) -> CoinOrientation:
+        corner_pos: CornerPos,
+        orientation: CornerOrientation,
+    ) -> CornerOrientation:
         if direction == Direction.HALF_TURN:
             return orientation
 
-        if not Var.will_rotate(*Var.g_coin(coin_pos), face):
+        if not Var.will_rotate(*Var.g_corner(corner_pos), face):
             return orientation
 
-        def s(i: CoinOrientation, j: CoinOrientation, orientation: CoinOrientation) -> CoinOrientation:
+        def s(
+            i: CornerOrientation, j: CornerOrientation, orientation: CornerOrientation
+        ) -> CornerOrientation:
             if orientation == i:
                 return j
             if orientation == j:
@@ -332,6 +396,7 @@ class Var:
         if face == Face.BACK:
             return s(1, 2, orientation)
         raise ValueError(f"Invalid face: {face}")
+
 
 class RubiksCubeSolver:
     t_max: int = 11
@@ -340,7 +405,7 @@ class RubiksCubeSolver:
         self, rubiks_cube: RubiksCube, t_max: int = 11, cnf_filename="rubiks_cube.cnf"
     ):
         RubiksCubeSolver.t_max = t_max
-        
+
         self.rubiks_cube = rubiks_cube
         self.cnf_filename = cnf_filename
 
@@ -349,18 +414,21 @@ class RubiksCubeSolver:
         Génère les clauses.
         """
         clauses: list[NamedClause] = self.generate_initial_clauses()
-        cube_pos = cast(Iterable[CoinPos], range(8))
-        orientations = cast(Iterable[CoinOrientation], range(3))
+        cube_pos = cast(Iterable[CornerPos], range(8))
+        orientations = cast(Iterable[CornerOrientation], range(3))
 
         # Etat final
         for id in cube_pos:
             clauses.append(
-                (f"Etat final, position du cube {id}", [Var.Coins.x(id, id, self.t_max)])
+                (
+                    f"Etat final, position du cube {id}",
+                    [Var.Corners.x(id, id, self.t_max)],
+                )
             )
             clauses.append(
                 (
                     f"Etat final, orientation du cube {id}",
-                    [Var.Coins.theta(id, 0, self.t_max)],
+                    [Var.Corners.theta(id, 0, self.t_max)],
                 )
             )
 
@@ -369,7 +437,10 @@ class RubiksCubeSolver:
             clauses.append(
                 (
                     f"Action obligatoire à chaque étape, temps {t}",
-                    [Var.Actions.a_face(f, d, t) for (f, d) in product(Var.faces, Direction)],
+                    [
+                        Var.Actions.a_face(f, d, t)
+                        for (f, d) in product(Var.faces, Direction)
+                    ],
                 )
             )
 
@@ -379,18 +450,21 @@ class RubiksCubeSolver:
                         clauses.append(
                             (
                                 f"Interdiction de rotations multiples, temps {t}, face {f}, {f_prime} et direction {d}, {d_prime}",
-                                [-Var.Actions.a_face(f, d, t), -Var.Actions.a_face(f_prime, d_prime, t)],
+                                [
+                                    -Var.Actions.a_face(f, d, t),
+                                    -Var.Actions.a_face(f_prime, d_prime, t),
+                                ],
                             )
                         )
 
                 for c in cube_pos:
-                    c_prime = Var.rotate_x_coin(f, d, c)
+                    c_prime = Var.rotate_x_corner(f, d, c)
                     action = Var.Actions.a_face(f, d, t)
 
                     # Transitions des positions
                     for id in cube_pos:
-                        x_prime = Var.Coins.x(c_prime, id, t)
-                        x = Var.Coins.x(c, id, t - 1)
+                        x_prime = Var.Corners.x(c_prime, id, t)
+                        x = Var.Corners.x(c, id, t - 1)
 
                         clauses.append(
                             (
@@ -408,10 +482,10 @@ class RubiksCubeSolver:
 
                     # Transitions des rotations
                     for o in orientations:
-                        theta_prime = Var.Coins.theta(
-                            c_prime, Var.rotate_theta_coin(f, d, c, o), t
+                        theta_prime = Var.Corners.theta(
+                            c_prime, Var.rotate_theta_corner(f, d, c, o), t
                         )
-                        theta = Var.Coins.theta(c, o, t - 1)
+                        theta = Var.Corners.theta(c, o, t - 1)
 
                         clauses.append(
                             (
@@ -489,7 +563,9 @@ class RubiksCubeSolver:
                 variables.extend([v for v in values if v > 0])
 
         actions: list[tuple[Face | Middle, Direction, int]] = [
-            Var.Actions.get_action_from(a) for a in variables if Var.Actions.is_action(a)
+            Var.Actions.get_action_from(a)
+            for a in variables
+            if Var.Actions.is_action(a)
         ]
 
         return (
@@ -501,34 +577,36 @@ class RubiksCubeSolver:
             ],
         )
 
-
     def generate_initial_clauses(self) -> list[NamedClause]:
         clauses: list[NamedClause] = []
 
         for cube_pos in range(8):
-            cube_pos = cast(CoinPos, cube_pos)
+            cube_pos = cast(CornerPos, cube_pos)
 
-            colors = self.rubiks_cube.get_colors_from_pos(Var.g_coin(cube_pos))
+            colors = self.rubiks_cube.get_colors_from_pos(Var.g_corner(cube_pos))
             real_cube_id, real_orientation = (
                 self.rubiks_cube.colors_to_id_and_orientation(colors)
             )
 
             for cube_id in range(8):
-                cube_id = cast(CoinPos, cube_id)
+                cube_id = cast(CornerPos, cube_id)
 
                 sign = 1 if cube_id == real_cube_id else -1
                 clauses.append(
-                    ("Initial state position", [sign * Var.Coins.x(cube_pos, cube_id, 0)])
+                    (
+                        "Initial state position",
+                        [sign * Var.Corners.x(cube_pos, cube_id, 0)],
+                    )
                 )
 
             for orientation in range(3):
-                orientation = cast(CoinOrientation, orientation)
+                orientation = cast(CornerOrientation, orientation)
 
                 sign = 1 if orientation == real_orientation else -1
                 clauses.append(
                     (
                         "Initial state orientation",
-                        [sign * Var.Coins.theta(cube_pos, orientation, 0)],
+                        [sign * Var.Corners.theta(cube_pos, orientation, 0)],
                     )
                 )
 
