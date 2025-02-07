@@ -13,8 +13,8 @@ from rubiks_cube_3_3_3 import (
 
 
 class Variable(ABC):
-    def __init__(self, id: int) -> None:
-        self.id = id
+    def __init__(self) -> None:
+        self.id = self.compute_id()
         self.is_true = True
 
     def __get_subclass_attrs(self):
@@ -26,6 +26,9 @@ class Variable(ABC):
 
     def copy(self) -> "Variable":
         return self.__class__(**self.__get_subclass_attrs())
+    
+    @abstractmethod
+    def compute_id(self) -> int: ...
 
     @staticmethod
     def n_vars() -> int: ...
@@ -81,10 +84,7 @@ class VariableState(Variable, Generic[TPos], ABC):
         self.pos: TPos = pos
         self.t = t
 
-        super().__init__(self.compute_id())
-
-    @abstractmethod
-    def compute_id(self) -> int: ...
+        super().__init__()
 
     @staticmethod
     def parent() -> type[VariableParent]: ...

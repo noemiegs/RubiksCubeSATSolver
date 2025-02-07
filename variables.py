@@ -1,5 +1,7 @@
 from typing import cast
 
+import numpy as np
+
 from rubiks_cube_3_3_3 import (
     Direction,
     EdgeOrientation,
@@ -111,13 +113,15 @@ class Var:
 
         @staticmethod
         def g(pos: CornerPos) -> tuple[int, int, int]:
-            # TODO
-            return pos % 2, (pos // 2) % 2, (pos // 4) % 2
+            return (
+                pos % Var.size,
+                (pos // Var.size) % Var.size,
+                (pos // (Var.size**2)) % Var.size,
+            )
 
         @staticmethod
         def g_inv(c_x: int, c_y: int, c_z: int) -> CornerPos:
-            # TODO
-            return cast(CornerPos, c_x + 2 * c_y + 4 * c_z)
+            return cast(CornerPos, c_x + Var.size * c_y + Var.size * c_z)
 
     class Edges(VariableParent):
         class x(VariableX[EdgePos]):
@@ -194,15 +198,15 @@ class Var:
         def n_vars() -> int:
             return Var.Edges.x.n_vars() + Var.Edges.theta.n_vars()
 
-        @staticmethod
-        def g(pos: EdgePos) -> tuple[int, int, int]:
-            # TODO
-            return pos % 2, (pos // 2) % 2, (pos // 4) % 2
+        # @staticmethod
+        # def g(pos: EdgePos) -> tuple[int, int, int]:
 
-        @staticmethod
-        def g_inv(c_x: int, c_y: int, c_z: int) -> EdgePos:
-            # TODO
-            return cast(EdgePos, c_x + 2 * c_y + 4 * c_z)
+        # @staticmethod
+        # def g_inv(c_x: int, c_y: int, c_z: int) -> EdgePos:
+        #     coords = (c_x, c_y, c_z)
+        #     axis = np.argmax([0 < p < Var.size - 1 for p in coords])
+            
+        #     other_coords = [p for i, p in enumerate(coords) if i != axis]
 
     class Centers(VariableParent):
         class x(VariableX[CenterPos]):
@@ -255,7 +259,10 @@ class Var:
             self.depth = depth
             self.t = t
 
-            super().__init__(
+            super().__init__()
+
+        def compute_id(self) -> int:
+            return (
                 Var.Corners.n_vars()
                 + Var.Edges.n_vars()
                 + Var.Centers.n_vars()
