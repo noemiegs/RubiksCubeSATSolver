@@ -39,7 +39,7 @@ def generate_true_instance(cube: RubiksCube, moves: list[str]) -> list[Variable]
 
 def main(size: Size = (2, 2, 2)):
     Var.t_max = 11
-    
+
     rubiks_cube = RubiksCube(size)
     moves = rubiks_cube.shuffle(Var.t_max, faces=(Face.BACK, Face.RIGHT, Face.BOTTOM))
 
