@@ -14,8 +14,8 @@ class Var:
     faces = [Face.RIGHT, Face.BOTTOM, Face.BACK]
 
     @staticmethod
-    def x(cube_pos: CubePos, cube_id: CubePos, t: int) -> int:
-        return cube_pos + cube_id * 8 + t * 64 + 1
+    def x(cube_pos: CubePos, cube_idx: CubePos, t: int) -> int:
+        return cube_pos + cube_idx * 8 + t * 64 + 1
 
     @staticmethod
     def theta(cube_pos: CubePos, orientation: Orientation, t: int) -> int:
@@ -48,9 +48,9 @@ class Var:
         if var <= 64 * (RubiksCubeSolver.t_max + 1):
             t = (var - 1) // 64
             cube_pos = (var - 1) % 64
-            cube_id = cube_pos // 8
+            cube_idx = cube_pos // 8
             cube_pos %= 8
-            return prefix + f"x({cube_pos}, {cube_id}, {t})"
+            return prefix + f"x({cube_pos}, {cube_idx}, {t})"
 
         if var <= (64 + 24) * (RubiksCubeSolver.t_max + 1):
             new_var = var - 64 * (RubiksCubeSolver.t_max + 1) - 1
@@ -168,14 +168,14 @@ class RubiksCubeSolver:
         orientations = cast(Iterable[Orientation], range(3))
 
         # Etat final
-        for id in cube_pos:
+        for idx in cube_pos:
             clauses.append(
-                (f"Etat final, position du cube {id}", [Var.x(id, id, self.t_max)])
+                (f"Etat final, position du cube {idx}", [Var.x(idx, idx, self.t_max)])
             )
             clauses.append(
                 (
-                    f"Etat final, orientation du cube {id}",
-                    [Var.theta(id, 0, self.t_max)],
+                    f"Etat final, orientation du cube {idx}",
+                    [Var.theta(idx, 0, self.t_max)],
                 )
             )
 
@@ -203,20 +203,20 @@ class RubiksCubeSolver:
                     action = Var.a(f, d, t)
 
                     # Transitions des positions
-                    for id in cube_pos:
-                        x_prime = Var.x(c_prime, id, t)
-                        x = Var.x(c, id, t - 1)
+                    for idx in cube_pos:
+                        x_prime = Var.x(c_prime, idx, t)
+                        x = Var.x(c, idx, t - 1)
 
                         clauses.append(
                             (
-                                f"Transition des positions, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 1",
+                                f"Transition des positions, id_cube {idx}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 1",
                                 [x_prime, -x, -action],
                             )
                         )
 
                         clauses.append(
                             (
-                                f"Transition des positions, id_cube {id}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 2",
+                                f"Transition des positions, id_cube {idx}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 2",
                                 [-x_prime, x, -action],
                             )
                         )
@@ -320,16 +320,16 @@ class RubiksCubeSolver:
             cube_pos = cast(CubePos, cube_pos)
 
             colors = self.rubiks_cube.get_colors_from_pos(Var.g(cube_pos))
-            real_cube_id, real_orientation = (
+            real_cube_idx, real_orientation = (
                 self.rubiks_cube.colors_to_id_and_orientation(colors)
             )
 
-            for cube_id in range(8):
-                cube_id = cast(CubePos, cube_id)
+            for cube_idx in range(8):
+                cube_idx = cast(CubePos, cube_idx)
 
-                sign = 1 if cube_id == real_cube_id else -1
+                sign = 1 if cube_idx == real_cube_idx else -1
                 clauses.append(
-                    ("Initial state position", [sign * Var.x(cube_pos, cube_id, 0)])
+                    ("Initial state position", [sign * Var.x(cube_pos, cube_idx, 0)])
                 )
 
             for orientation in range(3):
