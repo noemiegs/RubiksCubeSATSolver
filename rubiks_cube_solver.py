@@ -7,7 +7,7 @@ from rubiks_cube import Direction, Face, RubiksCube, CubePos, Orientation
 
 Clause = list[int]
 NamedClause = tuple[str, Clause]
-Action = tuple[Face, Direction]
+Action = tuple[Face, Direction, int]
 
 
 class Var:
@@ -60,7 +60,7 @@ class Var:
             cube_pos %= 8
             return prefix + f"theta({cube_pos}, {orientation}, {t})"
 
-        face, direction, t = Var.get_action_from(var)
+        (face, direction, depth), t = Var.get_action_from(var)
         return prefix + f"a({Face(face).name}, {Direction(direction).name}, {t})"
 
     @staticmethod
@@ -68,7 +68,7 @@ class Var:
         return (64 + 24) * (RubiksCubeSolver.t_max + 1) < var
 
     @staticmethod
-    def get_action_from(a: int) -> tuple[Face, Direction, int]:
+    def get_action_from(a: int) -> tuple[Action, int]:
         assert Var.is_action(a), f"Invalid action: {a}, {Var.decode(a)}"
 
         a -= (64 + 24) * (RubiksCubeSolver.t_max + 1) + 1
@@ -76,7 +76,7 @@ class Var:
         a = a % 9
         face = a // 3
         direction = a % 3
-        return Var.faces[face], Direction(direction), t
+        return (Var.faces[face], Direction(direction), 0), t
 
     @staticmethod
     def g(cube_pos: CubePos) -> tuple[int, int, int]:
@@ -155,7 +155,7 @@ class RubiksCubeSolver:
         self, rubiks_cube: RubiksCube, t_max: int = 11, cnf_filename="rubiks_cube.cnf"
     ):
         RubiksCubeSolver.t_max = t_max
-        
+
         self.rubiks_cube = rubiks_cube
         self.cnf_filename = cnf_filename
 
@@ -303,17 +303,14 @@ class RubiksCubeSolver:
                 values = map(int, line[2:].strip().split())
                 variables.extend([v for v in values if v > 0])
 
-        actions: list[tuple[Face, Direction, int]] = [
+        actions: list[tuple[Action, int]] = [
             Var.get_action_from(a) for a in variables if Var.is_action(a)
         ]
 
         return (
             True,
             [Var.decode(v) for v in variables],
-            [
-                (face, direction)
-                for face, direction, t in sorted(actions, key=lambda a: a[2])
-            ],
+            [action for action, t in sorted(actions, key=lambda a: a[1])],
         )
 
     def generate_initial_clauses(self) -> list[NamedClause]:
