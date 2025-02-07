@@ -17,9 +17,9 @@ def generate_true_instance(cube: RubiksCube, moves: list[str]) -> dict[int, bool
             true_instance[Var.x(cube_pos, cube_id, t)] = True
             true_instance[Var.theta(cube_pos, orientation, t)] = True
 
-        face, direction = cube.parse_move(moves[t])
+        face, direction, depth = cube.parse_move(moves[t])
 
-        cube.rotate(face, direction)
+        cube.rotate(face, direction, depth)
 
         true_instance[Var.a(face, direction, t + 1)] = True
 
@@ -46,8 +46,11 @@ def main(size: Size = (2, 2, 2)):
 
     if sat:
         print(f"Solved in {len(actions)} moves")
-        
-        moves = [RubiksCube.move_to_str(face, direction) for face, direction in actions]
+
+        moves = [
+            RubiksCube.move_to_str(face, direction, depth)
+            for face, direction, depth in actions
+        ]
         rubiks_cube.animate(RubiksCube.parse_moves(moves), speed=2)
 
 
