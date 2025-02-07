@@ -40,7 +40,7 @@ def main(size: Size = (2, 2, 2)):
     rubiks_cube.shuffle(faces=(Face.BACK, Face.RIGHT, Face.BOTTOM))
 
     solver = RubiksCubeSolver(rubiks_cube)
-    sat, actions = solver.find_optimal()
+    sat, actions = solver.run()
 
     print("SATISFIABLE" if sat else "UNSATISFIABLE")
 
