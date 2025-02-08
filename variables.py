@@ -18,7 +18,7 @@ class Var:
     t_max: int
     faces = [Face.RIGHT, Face.BOTTOM, Face.BACK]
     directions = [Direction.CLOCKWISE, Direction.HALF_TURN, Direction.COUNTERCLOCKWISE]
-    size: int = 2
+    size: int = 7
     depths = list(range(size - 1))
 
     class Corners(VariableParent):
@@ -198,15 +198,31 @@ class Var:
         def n_vars() -> int:
             return Var.Edges.x.n_vars() + Var.Edges.theta.n_vars()
 
-        # @staticmethod
-        # def g(pos: EdgePos) -> tuple[int, int, int]:
+        @staticmethod
+        def g(pos: EdgePos) -> tuple[int, int, int]:
+            axis_pos = (pos % (Var.size - 2)) + 1
 
-        # @staticmethod
-        # def g_inv(c_x: int, c_y: int, c_z: int) -> EdgePos:
-        #     coords = (c_x, c_y, c_z)
-        #     axis = np.argmax([0 < p < Var.size - 1 for p in coords])
+            pos_ = pos // (Var.size - 2)
+            other_coords = [(pos_ % 2) * (Var.size - 1), ((pos_ // 2) % 2) * (Var.size - 1)]
             
-        #     other_coords = [p for i, p in enumerate(coords) if i != axis]
+            axis = pos_ // 4
+            other_coords.insert(axis, axis_pos)
+
+            return other_coords[0], other_coords[1], other_coords[2]
+
+        @staticmethod
+        def g_inv(c_x: int, c_y: int, c_z: int) -> EdgePos:
+            coords = [c_x, c_y, c_z]
+
+            axis = np.argmax([0 < p < Var.size - 1 for p in coords]).item()
+            other_coords = [int(p != 0) for i, p in enumerate(coords) if i != axis]
+
+            return cast(
+                EdgePos,
+                (other_coords[0] + other_coords[1] * 2 + axis * 4) * (Var.size - 2)
+                + coords[axis]
+                - 1,
+            )
 
     class Centers(VariableParent):
         class x(VariableX[CenterPos]):
