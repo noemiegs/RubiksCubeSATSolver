@@ -26,7 +26,7 @@ class Variable(ABC):
 
     def copy(self) -> "Variable":
         return self.__class__(**self.__get_subclass_attrs())
-    
+
     @abstractmethod
     def compute_id(self) -> int: ...
 
@@ -68,7 +68,7 @@ TPos = TypeVar("TPos", CornerPos, EdgePos, CenterPos)
 TOrientation = TypeVar("TOrientation", CornerOrientation, EdgeOrientation)
 
 
-class VariableParent(ABC):
+class VariableParent(ABC, Generic[TPos]):
     @staticmethod
     def n_vars() -> int: ...
 
