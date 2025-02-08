@@ -18,7 +18,7 @@ class Var:
     t_max: int
     faces = [Face.RIGHT, Face.BOTTOM, Face.BACK]
     directions = [Direction.CLOCKWISE, Direction.HALF_TURN, Direction.COUNTERCLOCKWISE]
-    size: int = 7
+    size: int = 3
     depths = list(range(size - 1))
 
     class Corners(VariableParent):
@@ -261,21 +261,21 @@ class Var:
         @staticmethod
         def g(pos: CenterPos) -> tuple[int, int, int]:
             gamma = (Var.size - 2) ** 2
-            alpha = pos // gamma # position sur la face
-            beta = pos % gamma # face
-            axis = alpha // 2  # Détermine l'axe principal
-            i = alpha % 2  # Détermine la position sur l'axe
+            alpha = pos // gamma 
+            beta = pos % gamma
+            axis = alpha // 2 
+            i = alpha % 2  
             
             a = 1 + beta % (Var.size - 2)
             b = 1 + beta // (Var.size - 2)
-            pos_axis = i * (Var.size - 1)  # Soit 0, soit Var.size - 1
+            pos_axis = i * (Var.size - 1)
             
             coordinates = [a, b]
             coordinates.insert(axis, pos_axis)
 
             c_x, c_y, c_z = coordinates[0], coordinates[1], coordinates[2]
 
-            return c_x, c_y, c_z  # Retourne exactement les 3 coordonnées
+            return c_x, c_y, c_z 
         
 
 
