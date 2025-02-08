@@ -21,7 +21,7 @@ class Var:
     size: int = 7
     depths = list(range(size - 1))
 
-    class Corners(VariableParent):
+    class Corners(VariableParent[CornerPos]):
         class x(VariableX[CornerPos]):
             def compute_id(self) -> int:
                 return self.pos + self.idx * 8 + self.t * 64 + 1
@@ -123,7 +123,7 @@ class Var:
         def g_inv(c_x: int, c_y: int, c_z: int) -> CornerPos:
             return cast(CornerPos, c_x + Var.size * c_y + Var.size * c_z)
 
-    class Edges(VariableParent):
+    class Edges(VariableParent[EdgePos]):
         class x(VariableX[EdgePos]):
             def compute_id(self) -> int:
                 return (
@@ -224,7 +224,7 @@ class Var:
                 - 1,
             )
 
-    class Centers(VariableParent):
+    class Centers(VariableParent[CenterPos]):
         class x(VariableX[CenterPos]):
             def compute_id(self) -> int:
                 return (

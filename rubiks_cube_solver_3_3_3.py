@@ -2,7 +2,7 @@ import subprocess
 from typing import Iterable, cast
 from itertools import product
 
-from rubiks_cube_3_3_3 import Direction, RubiksCube, CornerPos, CornerOrientation
+from rubiks_cube_3_3_3 import CenterPos, Direction, EdgePos, RubiksCube, CornerPos, CornerOrientation
 from variables import Var, Variable
 from variables_abc import Clause, NamedClause
 
@@ -27,20 +27,48 @@ class RubiksCubeSolver:
         """
         clauses: list[NamedClause] = self.generate_initial_clauses()
         cube_pos = cast(Iterable[CornerPos], range(8))
+        cube_edge = cast(Iterable[EdgePos], range(12))
+        cube_centers = cast(Iterable[CenterPos], range(6))
         orientations = cast(Iterable[CornerOrientation], range(3))
 
         # Etat final
+        
+        # Corners
         for idx in cube_pos:
             clauses.append(
                 (
-                    f"Etat final, position du cube {idx}",
+                    f"Etat final Corners, position du cube {idx}",
                     [Var.Corners.x(idx, idx, self.t_max)],
                 )
             )
             clauses.append(
                 (
-                    f"Etat final, orientation du cube {idx}",
+                    f"Etat final Corners, orientation du cube {idx}",
                     [Var.Corners.theta(idx, 0, self.t_max)],
+                )
+            )
+        
+        # Edges
+        for idx in cube_edge:
+            clauses.append(
+                (
+                    f"Etat final Edges, position du cube {idx}",
+                    [Var.Edges.x(idx, idx, self.t_max)],
+                )
+            )
+            clauses.append(
+                (
+                    f"Etat final Corners, orientation du cube {idx}",
+                    [Var.Edges.theta(idx, 0, self.t_max)],
+                )
+            )
+        
+        # Centers
+        for idx in cube_centers:
+            clauses.append(
+                (
+                    f"Etat final Centers, position du cube {idx}",
+                    [Var.Centers.x(idx, idx, self.t_max)],
                 )
             )
 
