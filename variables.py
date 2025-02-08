@@ -18,7 +18,7 @@ class Var:
     t_max: int
     faces = [Face.RIGHT, Face.BOTTOM, Face.BACK]
     directions = [Direction.CLOCKWISE, Direction.HALF_TURN, Direction.COUNTERCLOCKWISE]
-    size: int = 7
+    size: int = 3
     depths = list(range(size - 1))
 
     class Corners(VariableParent[CornerPos]):
@@ -260,13 +260,56 @@ class Var:
 
         @staticmethod
         def g(pos: CenterPos) -> tuple[int, int, int]:
-            # TODO
-            return pos % 2, (pos // 2) % 2, (pos // 4) % 2
+            gamma = (Var.size - 2) ** 2
+            alpha = pos // gamma 
+            beta = pos % gamma
+            axis = alpha // 2 
+            i = alpha % 2  
+            
+            a = 1 + beta % (Var.size - 2)
+            b = 1 + beta // (Var.size - 2)
+            pos_axis = i * (Var.size - 1)
+            
+            coordinates = [a, b]
+            coordinates.insert(axis, pos_axis)
+
+            c_x, c_y, c_z = coordinates[0], coordinates[1], coordinates[2]
+
+            return c_x, c_y, c_z 
+        
+
 
         @staticmethod
         def g_inv(c_x: int, c_y: int, c_z: int) -> CenterPos:
-            # TODO
-            return cast(CenterPos, c_x + 2 * c_y + 4 * c_z)
+            gamma = (Var.size - 2)**2
+            x_0 = 0
+            x_max = gamma
+            y_0 = 2 * gamma
+            y_max = 3 * gamma
+            z_0 = 4 * gamma
+            z_max = 5 * gamma
+
+            center_pos = 0 
+
+            if c_x == 0:
+                center_pos = x_0 + (c_y -1) + (Var.size - 2) * (c_z - 1)
+            
+            elif c_x == Var.size - 1:
+                center_pos = x_max + (c_y -1) + (Var.size - 2) * (c_z - 1)
+
+            elif c_y == 0:
+                center_pos = y_0 + (c_x -1) + (Var.size - 2) * (c_z - 1)
+
+            elif c_y == Var.size - 1:
+                center_pos = y_max + (c_x -1) + (Var.size - 2) * (c_z - 1)
+
+            elif c_z == 0:
+                center_pos = z_0 + (c_x -1) + (Var.size - 2) * (c_y - 1)
+
+            elif c_z == Var.size - 1:
+                center_pos = z_max + (c_x -1) + (Var.size - 2) * (c_y - 1)
+
+            return cast(CenterPos, center_pos)
 
     class Actions(Variable):
         def __init__(self, face: Face, direction: Direction, depth: int, t: int):
