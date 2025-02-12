@@ -1,90 +1,201 @@
 import subprocess
-from typing import Iterable, cast
 from itertools import product
 
-from rubiks_cube_3_3_3 import CenterPos, Direction, EdgePos, RubiksCube, CornerPos, CornerOrientation
+from utils import Direction
+from rubiks_cube import RubiksCube
 from variables import Var, Variable
-from variables_abc import Clause, NamedClause
+from variables_abc import (
+    Clause,
+    NamedClause,
+    TOrientation,
+    TPos,
+    VariableTheta,
+    VariableX,
+)
 
 
 class RubiksCubeSolver:
-    t_max: int = 11
-
     def __init__(
         self,
         rubiks_cube: RubiksCube,
-        t_max: int = 11,
         cnf_filename="rubiks_cube.cnf",
     ):
-        RubiksCubeSolver.t_max = t_max
-
         self.rubiks_cube = rubiks_cube
         self.cnf_filename = cnf_filename
+
+    def generate_initial_clauses(self) -> list[NamedClause]:
+        clauses: list[NamedClause] = []
+
+        for pos in Var.Corners.pos_range():
+            x, theta = self.rubiks_cube.get_vars_from_corner_pos(pos, 0)
+
+            for idx in Var.Corners.pos_range():
+                sign = 1 if idx == x.idx else -1
+                clauses.append(
+                    (
+                        "Initial state position",
+                        [sign * Var.Corners.x(pos, idx, 0)],
+                    )
+                )
+
+            for orientation in Var.Corners.theta.orientation_range():
+                sign = 1 if orientation == theta.orientation else -1
+                clauses.append(
+                    (
+                        "Initial state orientation",
+                        [sign * Var.Corners.theta(pos, orientation, 0)],
+                    )
+                )
+        
+        for pos in Var.Edges.pos_range():
+            x, theta = self.rubiks_cube.get_vars_from_edge_pos(pos, 0)
+
+            for idx in Var.Edges.pos_range():
+                sign = 1 if idx == x.idx else -1
+                clauses.append(
+                    (
+                        "Initial state position",
+                        [sign * Var.Edges.x(pos, idx, 0)],
+                    )
+                )
+
+            for orientation in Var.Edges.theta.orientation_range():
+                sign = 1 if orientation == theta.orientation else -1
+                clauses.append(
+                    (
+                        "Initial state orientation",
+                        [sign * Var.Edges.theta(pos, orientation, 0)],
+                    )
+                )
+        
+        for pos in Var.Centers.pos_range():
+            x = self.rubiks_cube.get_vars_from_centers_pos(pos, 0)
+
+            for idx in Var.Centers.pos_range():
+                sign = 1 if idx == x.idx else -1
+                clauses.append(
+                    (
+                        "Initial state position",
+                        [sign * Var.Centers.x(pos, idx, 0)],
+                    )
+                )
+
+        return clauses
+
+    def generate_clauses_final_x(self, x: type[VariableX[TPos]]) -> list[NamedClause]:
+        clauses: list[NamedClause] = []
+
+        for idx in x.parent().pos_range():
+            clauses.append(
+                (
+                    f"Etat final {x.parent().__name__}, position du cube {idx}",
+                    [x(idx, idx, Variable.t_max)],
+                )
+            )
+
+        return clauses
+
+    def generate_clauses_final_theta(
+        self, theta: type[VariableTheta]
+    ) -> list[NamedClause]:
+        clauses: list[NamedClause] = []
+
+        for idx in theta.parent().pos_range():
+            clauses.append(
+                (
+                    f"Etat final {theta.parent().__name__}, orientation du cube {idx}",
+                    [theta(idx, 0, Variable.t_max)],
+                )
+            )
+
+        return clauses
+
+    def generate_clauses_transition_x(
+        self, x: type[VariableX], action: Var.Actions
+    ) -> list[NamedClause]:
+        clauses: list[NamedClause] = []
+
+        for c in x.parent().pos_range():
+            for idx in x.parent().pos_range():
+                var_x = x(c, idx, action.t - 1)
+                var_x_prime = var_x.rotate(action.face, action.direction, action.depth)
+
+                clauses.append(
+                    (
+                        f"Transition des positions {x.parent().__name__}, id_cube {idx}, case_cube {c}, {action.face}, {action.direction}, depth {action.depth}, temps {action.t}, clause 1",
+                        [var_x_prime, -var_x, -action],
+                    )
+                )
+
+                clauses.append(
+                    (
+                        f"Transition des positions {x.parent().__name__}, id_cube {idx}, case_cube {c}, {action.face}, {action.direction}, depth {action.depth}, temps {action.t}, clause 2",
+                        [-var_x_prime, var_x, -action],
+                    )
+                )
+
+        return clauses
+
+    def generate_clauses_transition_theta(
+        self, theta: type[VariableTheta[TPos, TOrientation]], action: Var.Actions
+    ) -> list[NamedClause]:
+        clauses: list[NamedClause] = []
+
+        for c in theta.parent().pos_range():
+            for o in theta.orientation_range():
+                var_theta = theta(c, o, action.t - 1)
+                var_theta_prime = var_theta.rotate(
+                    action.face, action.direction, action.depth
+                )
+
+                clauses.append(
+                    (
+                        f"Transition des orientations {theta.parent().__name__}, case_cube {c}, orientation {o}, {action.face}, {action.direction}, depth {action.depth}, temps {action.t}, clause 1",
+                        [var_theta_prime, -var_theta, -action],
+                    )
+                )
+
+                clauses.append(
+                    (
+                        f"Transition des orientations {theta.parent().__name__}, case_cube {c}, orientation {o}, {action.face}, {action.direction}, depth {action.depth}, temps {action.t}, clause 2",
+                        [-var_theta_prime, var_theta, -action],
+                    )
+                )
+
+        return clauses
 
     def generate_clauses(self) -> list[NamedClause]:
         """
         Génère les clauses.
         """
         clauses: list[NamedClause] = self.generate_initial_clauses()
-        cube_pos = cast(Iterable[CornerPos], range(8))
-        cube_edge = cast(Iterable[EdgePos], range(12))
-        cube_centers = cast(Iterable[CenterPos], range(6))
-        orientations = cast(Iterable[CornerOrientation], range(3))
 
-        # Etat final
-        
+        ## Etat final
         # Corners
-        for idx in cube_pos:
-            clauses.append(
-                (
-                    f"Etat final Corners, position du cube {idx}",
-                    [Var.Corners.x(idx, idx, self.t_max)],
-                )
-            )
-            clauses.append(
-                (
-                    f"Etat final Corners, orientation du cube {idx}",
-                    [Var.Corners.theta(idx, 0, self.t_max)],
-                )
-            )
-        
+        clauses += self.generate_clauses_final_x(Var.Corners.x)
+        clauses += self.generate_clauses_final_theta(Var.Corners.theta)
         # Edges
-        for idx in cube_edge:
-            clauses.append(
-                (
-                    f"Etat final Edges, position du cube {idx}",
-                    [Var.Edges.x(idx, idx, self.t_max)],
-                )
-            )
-            clauses.append(
-                (
-                    f"Etat final Corners, orientation du cube {idx}",
-                    [Var.Edges.theta(idx, 0, self.t_max)],
-                )
-            )
-        
+        clauses += self.generate_clauses_final_x(Var.Edges.x)
+        clauses += self.generate_clauses_final_theta(Var.Edges.theta)
         # Centers
-        for idx in cube_centers:
-            clauses.append(
-                (
-                    f"Etat final Centers, position du cube {idx}",
-                    [Var.Centers.x(idx, idx, self.t_max)],
-                )
-            )
+        clauses += self.generate_clauses_final_x(Var.Centers.x)
 
-        for t in range(1, self.t_max + 1):
+        ## Transition
+        for t in range(1, Variable.t_max + 1):
             # Ajout des clauses pour forcer une action par étape
             clauses.append(
                 (
                     f"Action obligatoire à chaque étape, temps {t}",
                     [
-                        Var.Actions(f, d, 0, t)
-                        for (f, d) in product(Var.faces, Direction)
+                        Var.Actions(f, d, depth, t)
+                        for (f, d, depth) in product(Var.faces, Direction, Var.depths)
                     ],
                 )
             )
 
             for f, d, depth in product(Var.faces, Direction, Var.depths):
+                action = Var.Actions(f, d, depth, t)
+
                 for f_prime, d_prime, depth_prime in product(
                     Var.faces, Direction, Var.depths
                 ):
@@ -93,52 +204,24 @@ class RubiksCubeSolver:
                             (
                                 f"Interdiction de rotations multiples, temps {t}, face {f}, {f_prime} et direction {d}, {d_prime}",
                                 [
-                                    -Var.Actions(f, d, depth, t),
+                                    -action,
                                     -Var.Actions(f_prime, d_prime, depth_prime, t),
                                 ],
                             )
                         )
 
-                for c in cube_pos:
-                    action = Var.Actions(f, d, 0, t)
-
-                    # Transitions des positions
-                    for idx in cube_pos:
-                        x = Var.Corners.x(c, idx, t - 1)
-                        x_prime = x.rotate(f, d, 0)
-
-                        clauses.append(
-                            (
-                                f"Transition des positions, id_cube {idx}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 1",
-                                [x_prime, -x, -action],
-                            )
-                        )
-
-                        clauses.append(
-                            (
-                                f"Transition des positions, id_cube {idx}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 2",
-                                [-x_prime, x, -action],
-                            )
-                        )
-
-                    # Transitions des rotations
-                    for o in orientations:
-                        theta = Var.Corners.theta(c, o, t - 1)
-                        theta_prime = theta.rotate(f, d, 0)
-
-                        clauses.append(
-                            (
-                                f"Transition des orientations, case_cube {c}, orientation {o}, face {f},  direction {d}, temps {t}, clause 1",
-                                [theta_prime, -theta, -action],
-                            )
-                        )
-
-                        clauses.append(
-                            (
-                                f"Transition des orientations, case_cube {c}, orientation {o}, face {f},  direction {d}, temps {t}, clause 2",
-                                [-theta_prime, theta, -action],
-                            )
-                        )
+                # Corners
+                clauses += self.generate_clauses_transition_x(Var.Corners.x, action)
+                clauses += self.generate_clauses_transition_theta(
+                    Var.Corners.theta, action
+                )
+                # Edges
+                clauses += self.generate_clauses_transition_x(Var.Edges.x, action)
+                clauses += self.generate_clauses_transition_theta(
+                    Var.Edges.theta, action
+                )
+                # Centers
+                clauses += self.generate_clauses_transition_x(Var.Centers.x, action)
 
         return clauses
 
@@ -211,41 +294,6 @@ class RubiksCubeSolver:
             [action for action in sorted(actions, key=lambda a: a.t)],
         )
 
-    def generate_initial_clauses(self) -> list[NamedClause]:
-        clauses: list[NamedClause] = []
-
-        for cube_pos in range(8):
-            cube_pos = cast(CornerPos, cube_pos)
-
-            colors = self.rubiks_cube.get_colors_from_pos(Var.Corners.g(cube_pos))
-            real_cube_idx, real_orientation = (
-                self.rubiks_cube.colors_to_id_and_orientation(colors)
-            )
-
-            for cube_idx in range(8):
-                cube_idx = cast(CornerPos, cube_idx)
-
-                sign = 1 if cube_idx == real_cube_idx else -1
-                clauses.append(
-                    (
-                        "Initial state position",
-                        [sign * Var.Corners.x(cube_pos, cube_idx, 0)],
-                    )
-                )
-
-            for orientation in range(3):
-                orientation = cast(CornerOrientation, orientation)
-
-                sign = 1 if orientation == real_orientation else -1
-                clauses.append(
-                    (
-                        "Initial state orientation",
-                        [sign * Var.Corners.theta(cube_pos, orientation, 0)],
-                    )
-                )
-
-        return clauses
-
     def run(
         self, t_max: int, true_instance: list[Variable] | None = None
     ) -> tuple[bool, list[Var.Actions]]:
@@ -254,8 +302,7 @@ class RubiksCubeSolver:
 
         true_instance : dictionnaire des variables SAT à forcer à True (Pour debug uniquement).
         """
-        RubiksCubeSolver.t_max = t_max
-        Var.t_max = t_max
+        Variable.t_max = t_max
 
         clauses = self.generate_clauses()
         sat, result, actions = self.solve([clauses[1] for clauses in clauses])

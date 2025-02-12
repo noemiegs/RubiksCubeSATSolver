@@ -2,7 +2,12 @@ import subprocess
 from typing import Iterable, cast
 from itertools import product
 
-from rubiks_cube import Direction, Face, RubiksCube, CubePos, Orientation
+from utils import CornerPos, Direction, Face
+from rubiks_cube import RubiksCube
+from variables_abc import Variable
+
+CubePos = int
+Orientation = int
 
 
 Clause = list[int]
@@ -172,6 +177,8 @@ class RubiksCubeSolver:
             clauses.append(
                 (f"Etat final, position du cube {idx}", [Var.x(idx, idx, self.t_max)])
             )
+
+        for idx in cube_pos:
             clauses.append(
                 (
                     f"Etat final, orientation du cube {idx}",
@@ -221,6 +228,9 @@ class RubiksCubeSolver:
                             )
                         )
 
+                for c in cube_pos:
+                    c_prime = Var.rotate_x(f, d, c)
+                    action = Var.a(f, d, t)
                     # Transitions des rotations
                     for o in orientations:
                         theta_prime = Var.theta(
@@ -317,17 +327,14 @@ class RubiksCubeSolver:
         clauses: list[NamedClause] = []
 
         for cube_pos in range(8):
-            cube_pos = cast(CubePos, cube_pos)
+            cube_pos = cast(CornerPos, cube_pos)
 
-            colors = self.rubiks_cube.get_colors_from_pos(Var.g(cube_pos))
-            real_cube_idx, real_orientation = (
-                self.rubiks_cube.colors_to_id_and_orientation(colors)
-            )
+            x, theta = self.rubiks_cube.get_vars_from_corner_pos(cube_pos, 0)
 
             for cube_idx in range(8):
-                cube_idx = cast(CubePos, cube_idx)
+                cube_idx = cast(CornerPos, cube_idx)
 
-                sign = 1 if cube_idx == real_cube_idx else -1
+                sign = 1 if cube_idx == x.idx else -1
                 clauses.append(
                     ("Initial state position", [sign * Var.x(cube_pos, cube_idx, 0)])
                 )
@@ -335,7 +342,7 @@ class RubiksCubeSolver:
             for orientation in range(3):
                 orientation = cast(Orientation, orientation)
 
-                sign = 1 if orientation == real_orientation else -1
+                sign = 1 if orientation == theta.orientation else -1
                 clauses.append(
                     (
                         "Initial state orientation",
@@ -353,6 +360,8 @@ class RubiksCubeSolver:
 
         true_instance : dictionnaire des variables SAT à forcer à True (Pour debug uniquement).
         """
+        Variable.cube_size = 2
+        
         clauses = self.generate_clauses()
         sat, result, actions = self.solve([clauses[1] for clauses in clauses])
 

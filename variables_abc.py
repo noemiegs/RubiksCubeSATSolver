@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar
+from typing import Generic, Iterable, TypeVar
 
-from rubiks_cube_3_3_3 import (
+from utils import (
     Direction,
     Face,
     CornerPos,
@@ -13,6 +13,9 @@ from rubiks_cube_3_3_3 import (
 
 
 class Variable(ABC):
+    cube_size = 3
+    t_max = 11
+
     def __init__(self) -> None:
         self.id = self.compute_id()
         self.is_true = True
@@ -48,7 +51,7 @@ class Variable(ABC):
         return -self
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}{self.__get_subclass_attrs()}"
+        return f"{'' if self.is_true else 'not '}{self.__class__.__qualname__}{self.__get_subclass_attrs()}"
 
     def __mul__(self, other: int) -> "Variable":
         if other == 1:
@@ -78,6 +81,9 @@ class VariableParent(ABC, Generic[TPos]):
     @staticmethod
     def g_inv(c_x: int, c_y: int, c_z: int) -> TPos: ...
 
+    @staticmethod
+    def pos_range() -> Iterable[TPos]: ...
+
 
 class VariableState(Variable, Generic[TPos], ABC):
     def __init__(self, pos: TPos, t: int) -> None:
@@ -99,11 +105,11 @@ class VariableState(Variable, Generic[TPos], ABC):
         c_x, c_y, c_z = self.g(self.pos)
 
         if face == Face.RIGHT:
-            return c_x == 2 - 1 - depth  # TODO: Replace 2 with the size of the cube
+            return c_x == Variable.cube_size - 1 - depth
         if face == Face.BOTTOM:
-            return c_y == 2 - 1 - depth
+            return c_y == Variable.cube_size - 1 - depth
         if face == Face.BACK:
-            return c_z == 2 - 1 - depth
+            return c_z == Variable.cube_size - 1 - depth
         raise ValueError(f"Invalid face: {face}")
 
     def rotate_cube(self, face: Face, direction: Direction, depth: int) -> TPos:
@@ -116,11 +122,11 @@ class VariableState(Variable, Generic[TPos], ABC):
 
         def rotate_1(face: Face, c_x: int, c_y: int, c_z: int) -> tuple[int, int, int]:
             if face == Face.RIGHT:
-                return c_x, c_z, 1 - c_y
+                return c_x, c_z, Variable.cube_size - c_y - 1
             if face == Face.BOTTOM:
-                return 1 - c_z, c_y, c_x
+                return Variable.cube_size - c_z - 1, c_y, c_x
             if face == Face.BACK:
-                return c_y, 1 - c_x, c_z
+                return c_y, Variable.cube_size - c_x - 1, c_z
             raise ValueError(f"Invalid face: {face}")
 
         def rotate_i(
@@ -158,3 +164,6 @@ class VariableTheta(VariableState[TPos], Generic[TPos, TOrientation], ABC):
     def __init__(self, pos: TPos, orientation: TOrientation, t: int) -> None:
         self.orientation: TOrientation = orientation
         super().__init__(pos, t)
+
+    @staticmethod
+    def orientation_range() -> Iterable[TOrientation]: ...

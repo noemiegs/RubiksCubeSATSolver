@@ -17,5 +17,4 @@ venv/
 .vscode/
 .idea/
 
-sokorridor.cnf
-rubiks_cube.cnf
+*.cnf

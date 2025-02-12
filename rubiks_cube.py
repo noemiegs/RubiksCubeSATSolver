@@ -1,123 +1,30 @@
-import re
 import numpy as np
 import pygame
 import random
-from enum import Enum
+import re
+
 from itertools import pairwise
 from math import cos, sin, radians
-from typing import Literal, cast
+from typing import cast
 from colorama import Fore, Style
+from utils import (
+    CenterPos,
+    Color,
+    Direction,
+    EdgeOrientation,
+    Face,
+    Size,
+    CornerPos,
+    CornerOrientation,
+    EdgePos,
+)
+
+from variables import Var
+from variables_abc import Variable
 
 
 WIDTH, HEIGHT = 600, 600
 X, Y, Z = 0, 1, 2
-
-CubePos = Literal[0, 1, 2, 3, 4, 5, 6, 7]
-Orientation = Literal[0, 1, 2]
-Size = tuple[int, int, int]
-
-
-class Color(Enum):
-    RED = 0
-    BLUE = 1
-    GREEN = 2
-    YELLOW = 3
-    ORANGE = 4
-    WHITE = 5
-
-    def to_rgb(self) -> tuple[int, int, int]:
-        return {
-            Color.RED: (255, 0, 0),
-            Color.BLUE: (0, 0, 255),
-            Color.GREEN: (0, 255, 0),
-            Color.YELLOW: (255, 255, 0),
-            Color.ORANGE: (255, 165, 0),
-            Color.WHITE: (255, 255, 255),
-        }[self]
-
-
-class Direction(Enum):
-    CLOCKWISE = 0
-    HALF_TURN = 1
-    COUNTERCLOCKWISE = 2
-
-    @staticmethod
-    def from_str(s: str) -> "Direction":
-        return {
-            "": Direction.CLOCKWISE,
-            "2": Direction.HALF_TURN,
-            "'": Direction.COUNTERCLOCKWISE,
-        }[s]
-
-    def opposite(self) -> "Direction":
-        return {
-            Direction.CLOCKWISE: Direction.COUNTERCLOCKWISE,
-            Direction.HALF_TURN: Direction.HALF_TURN,
-            Direction.COUNTERCLOCKWISE: Direction.CLOCKWISE,
-        }[self]
-
-    def to_str(self) -> str:
-        return {
-            Direction.CLOCKWISE: "",
-            Direction.HALF_TURN: "2",
-            Direction.COUNTERCLOCKWISE: "'",
-        }[self]
-
-    def __lt__(self, other: "Direction") -> bool:
-        return self.value < other.value
-
-
-class Face(Enum):
-    FRONT = 0
-    BACK = 1
-    LEFT = 2
-    RIGHT = 3
-    TOP = 4
-    BOTTOM = 5
-
-    def get_vertices_idx(self) -> list[int]:
-        return {
-            Face.FRONT: [0, 1, 3, 2],
-            Face.BACK: [4, 5, 7, 6],
-            Face.LEFT: [0, 4, 6, 2],
-            Face.RIGHT: [1, 5, 7, 3],
-            Face.TOP: [0, 1, 5, 4],
-            Face.BOTTOM: [2, 3, 7, 6],
-        }[self]
-
-    @staticmethod
-    def from_str(s: str) -> "Face":
-        return {
-            "F": Face.FRONT,
-            "B": Face.BACK,
-            "L": Face.LEFT,
-            "R": Face.RIGHT,
-            "U": Face.TOP,
-            "D": Face.BOTTOM,
-        }[s]
-
-    def opposite(self) -> "Face":
-        return {
-            Face.FRONT: Face.BACK,
-            Face.BACK: Face.FRONT,
-            Face.LEFT: Face.RIGHT,
-            Face.RIGHT: Face.LEFT,
-            Face.TOP: Face.BOTTOM,
-            Face.BOTTOM: Face.TOP,
-        }[self]
-
-    def to_str(self) -> str:
-        return {
-            Face.FRONT: "F",
-            Face.BACK: "B",
-            Face.LEFT: "L",
-            Face.RIGHT: "R",
-            Face.TOP: "U",
-            Face.BOTTOM: "D",
-        }[self]
-
-    def __lt__(self, other: "Face") -> bool:
-        return self.value < other.value
 
 
 class RubiksCube:
@@ -145,48 +52,171 @@ class RubiksCube:
             Face.BOTTOM: np.full((size[0], size[2]), Color.ORANGE.value, dtype=np.int8),
         }
 
-    def get_colors_from_pos(
-        self, pos: tuple[int, int, int]
-    ) -> tuple[Color, Color, Color]:
-        """
-        Get the colors of the cube at position pos (front/back, left/right, up/down)
-        """
-        return (
+    def get_vars_from_corner_pos(
+        self, pos: CornerPos, t: int
+    ) -> tuple[Var.Corners.x, Var.Corners.theta]:
+        x, y, z = Var.Corners.g(pos)
+
+        colors = [
             Color(
-                self.faces[Face.FRONT if pos[2] == 0 else Face.BACK][
-                    pos[0] if pos[2] == 0 else (1 - pos[0]), pos[1]
+                self.faces[Face.FRONT if z == 0 else Face.BACK][
+                    x if z == 0 else (-x - 1), y
                 ]
             ),
             Color(
-                self.faces[Face.LEFT if pos[0] == 0 else Face.RIGHT][
-                    (1 - pos[2]) if pos[0] == 0 else pos[2], pos[1]
+                self.faces[Face.LEFT if x == 0 else Face.RIGHT][
+                    (-z - 1) if x == 0 else z, y
                 ]
             ),
             Color(
-                self.faces[Face.TOP if pos[1] == 0 else Face.BOTTOM][
-                    pos[0], (1 - pos[2]) if pos[1] == 0 else pos[2]
+                self.faces[Face.TOP if y == 0 else Face.BOTTOM][
+                    x, (-z - 1) if y == 0 else z
                 ]
             ),
+        ]
+
+        idx = Var.Corners.g_inv(
+            int(Color.GREEN in colors) * (self.size[X] - 1),
+            int(Color.ORANGE in colors) * (self.size[Y] - 1),
+            int(Color.YELLOW in colors) * (self.size[Z] - 1),
+        )
+        orientation = cast(
+            CornerOrientation,
+            np.argmax([color in (Color.WHITE, Color.YELLOW) for color in colors]),
         )
 
-    def colors_to_id_and_orientation(
-        self, colors: tuple[Color, Color, Color]
-    ) -> tuple[CubePos, Orientation]:
-        """
-        Convert the colors of a corner piece to its id and orientation
+        return Var.Corners.x(pos, idx, t), Var.Corners.theta(pos, orientation, t)
 
-        colors: tuple of 3 colors of the corner piece (front/back, left/right, up/down)
-        """
-        cube_pos = (
-            int(Color.GREEN in colors)
-            + 2 * int(Color.ORANGE in colors)
-            + 4 * int(Color.YELLOW in colors)
-        )
-        orientation = np.argmax(
-            [color in (Color.WHITE, Color.YELLOW) for color in colors]
-        )
+    def get_vars_from_edge_pos(
+        self, pos: EdgePos, t: int
+    ) -> tuple[Var.Edges.x, Var.Edges.theta]:
+        coords = list(Var.Edges.g(pos))
 
-        return cast(CubePos, cube_pos), cast(Orientation, orientation)
+        axis = np.argmax([0 < p < Variable.cube_size - 1 for p in coords]).item()
+        for i in range(len(coords)):
+            if i != axis:
+                coords[i] = -int(coords[i] != 0)
+
+        match coords:
+            case [x, 0, 0]:
+                colors = [
+                    Color(self.faces[Face.TOP][x, -1]),
+                    Color(self.faces[Face.FRONT][x, 0]),
+                ]
+            case [x, -1, 0]:
+                colors = [
+                    Color(self.faces[Face.BOTTOM][x, 0]),
+                    Color(self.faces[Face.FRONT][x, -1]),
+                ]
+            case [x, 0, -1]:
+                colors = [
+                    Color(self.faces[Face.TOP][x, 0]),
+                    Color(self.faces[Face.BACK][-x - 1, 0]),
+                ]
+            case [x, -1, -1]:
+                colors = [
+                    Color(self.faces[Face.BOTTOM][x, -1]),
+                    Color(self.faces[Face.BACK][-x - 1, -1]),
+                ]
+            case [0, y, 0]:
+                colors = [
+                    Color(self.faces[Face.LEFT][-1, y]),
+                    Color(self.faces[Face.FRONT][0, y]),
+                ]
+            case [-1, y, 0]:
+                colors = [
+                    Color(self.faces[Face.RIGHT][0, y]),
+                    Color(self.faces[Face.FRONT][-1, y]),
+                ]
+            case [0, y, -1]:
+                colors = [
+                    Color(self.faces[Face.LEFT][0, y]),
+                    Color(self.faces[Face.BACK][-1, y]),
+                ]
+            case [-1, y, -1]:
+                colors = [
+                    Color(self.faces[Face.RIGHT][-1, y]),
+                    Color(self.faces[Face.BACK][0, y]),
+                ]
+            case [0, 0, z]:
+                colors = [
+                    Color(self.faces[Face.TOP][0, -z - 1]),
+                    Color(self.faces[Face.LEFT][-z - 1, 0]),
+                ]
+            case [-1, 0, z]:
+                colors = [
+                    Color(self.faces[Face.TOP][-1, -z - 1]),
+                    Color(self.faces[Face.RIGHT][z, 0]),
+                ]
+            case [0, -1, z]:
+                colors = [
+                    Color(self.faces[Face.BOTTOM][0, z]),
+                    Color(self.faces[Face.LEFT][-z - 1, -1]),
+                ]
+            case [-1, -1, z]:
+                colors = [
+                    Color(self.faces[Face.BOTTOM][-1, z]),
+                    Color(self.faces[Face.RIGHT][z, -1]),
+                ]
+            case _:
+                raise ValueError(f"Invalid edge position: {pos}")
+
+        orientation = cast(EdgeOrientation, int(colors[0].value > colors[1].value))
+        idx = None
+        # X Axis
+        if Color.BLUE not in colors and Color.GREEN not in colors:
+            idx = Var.Edges.g_inv(
+                1,  # TODO : Change it for n*n*n cubes
+                int(Color.ORANGE in colors) * (self.size[Y] - 1),
+                int(Color.YELLOW in colors) * (self.size[Z] - 1),
+            )
+        # Y Axis
+        if Color.RED not in colors and Color.ORANGE not in colors:
+            idx = Var.Edges.g_inv(
+                int(Color.GREEN in colors) * (self.size[X] - 1),
+                1,
+                int(Color.YELLOW in colors) * (self.size[Z] - 1),
+            )
+        # Z Axis
+        if Color.WHITE not in colors and Color.YELLOW not in colors:
+            idx = Var.Edges.g_inv(
+                int(Color.GREEN in colors) * (self.size[X] - 1),
+                int(Color.ORANGE in colors) * (self.size[Y] - 1),
+                1,
+            )
+        assert idx is not None, f"Invalid edge colors: {colors}"
+
+        return Var.Edges.x(pos, idx, t), Var.Edges.theta(pos, orientation, t)
+
+    def get_vars_from_centers_pos(self, pos: CenterPos, t: int) -> Var.Centers.x:
+        x, y, z = Var.Centers.g(pos)
+
+        # TODO : Change it for n*n*n cubes
+        color = None
+        if x == 0:
+            color = Color(self.faces[Face.LEFT][1, 1])
+        if x == self.size[X] - 1:
+            color = Color(self.faces[Face.RIGHT][1, 1])
+        if y == 0:
+            color = Color(self.faces[Face.TOP][1, 1])
+        if y == self.size[Y] - 1:
+            color = Color(self.faces[Face.BOTTOM][1, 1])
+        if z == 0:
+            color = Color(self.faces[Face.FRONT][1, 1])
+        if z == self.size[Z] - 1:
+            color = Color(self.faces[Face.BACK][1, 1])
+        assert color is not None, f"Invalid center position: {pos}"
+
+        idx = {
+            Color.BLUE: 0,
+            Color.GREEN: 1,
+            Color.RED: 2,
+            Color.ORANGE: 3,
+            Color.WHITE: 4,
+            Color.YELLOW: 5,
+        }[color]
+
+        return Var.Centers.x(pos, idx, t)
 
     def _up_face_and_slice(self, face: Face, depth: int) -> tuple[Face, slice]:
         return {
@@ -667,13 +697,13 @@ class RubiksCube:
 
 
 def main():
-    CUBE_SIZE = (8, 8, 8)
+    CUBE_SIZE = (3, 3, 3)
 
     cube = RubiksCube(CUBE_SIZE)
 
     moves = cube.shuffle()
     print(moves)
-    cube.animate(RubiksCube.parse_moves(RubiksCube.reverse_moves(moves)), speed=25)
+    cube.animate(RubiksCube.parse_moves(RubiksCube.reverse_moves(moves)), speed=1)
 
 
 if __name__ == "__main__":
