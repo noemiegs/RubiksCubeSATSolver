@@ -1,6 +1,6 @@
-from typing import cast
-from rubiks_cube_3_3_3 import CornerPos, RubiksCube, Size, Face
+from rubiks_cube import RubiksCube, Size
 from rubiks_cube_solver_3_3_3 import RubiksCubeSolver
+from utils import Face
 from variables import Var
 from variables_abc import Variable
 
@@ -9,42 +9,40 @@ def generate_true_instance(cube: RubiksCube, moves: list[str]) -> list[Variable]
     cube = cube.copy()
     true_instance: list[Variable] = []
 
+    assert len(moves) == Variable.t_max
+
     for t in range(len(moves)):
-        for cube_pos in range(8):
-            cube_pos = cast(CornerPos, cube_pos)
-
-            colors = cube.get_colors_from_pos(Var.Corners.g(cube_pos))
-            cube_idx, orientation = cube.colors_to_id_and_orientation(colors)
-
-            true_instance.append(Var.Corners.x(cube_pos, cube_idx, t))
-            true_instance.append(Var.Corners.theta(cube_pos, orientation, t))
+        update_true_instance(cube, true_instance, t)
 
         face, direction, depth = cube.parse_move(moves[t])
 
         cube.rotate(face, direction, depth)
 
-        true_instance.append(Var.Actions(face, direction, 0, t + 1))
-
-    for cube_pos in range(8):
-        cube_pos = cast(CornerPos, cube_pos)
-
-        colors = cube.get_colors_from_pos(Var.Corners.g(cube_pos))
-        cube_idx, orientation = cube.colors_to_id_and_orientation(colors)
-
-        true_instance.append(Var.Corners.x(cube_pos, cube_idx, len(moves)))
-        true_instance.append(Var.Corners.theta(cube_pos, orientation, len(moves)))
+        true_instance.append(Var.Actions(face, direction, depth, t + 1))
+    update_true_instance(cube, true_instance, len(moves))
 
     return true_instance
 
 
-def main(size: Size = (2, 2, 2)):
-    Var.t_max = 11
+def update_true_instance(cube: RubiksCube, true_instance: list[Variable], t: int):
+    for pos in Var.Corners.pos_range():
+        true_instance += list(cube.get_vars_from_corner_pos(pos, t))
+    for pos in Var.Edges.pos_range():
+        true_instance += list(cube.get_vars_from_edge_pos(pos, t))
+    for pos in Var.Centers.pos_range():
+        true_instance += [cube.get_vars_from_centers_pos(pos, t)]
+
+
+def main(size: Size = (3, 3, 3)):
+    Variable.t_max = 30
+    Variable.cube_size = size[0]
+    Var.depths = list(range(Variable.cube_size - 1))
 
     rubiks_cube = RubiksCube(size)
-    moves = rubiks_cube.shuffle(Var.t_max, faces=(Face.BACK, Face.RIGHT, Face.BOTTOM))
+    moves = rubiks_cube.shuffle(faces=(Face.BACK, Face.RIGHT, Face.BOTTOM))
 
-    solver = RubiksCubeSolver(rubiks_cube, Var.t_max)
-    sat, actions = solver.run(Var.t_max)
+    solver = RubiksCubeSolver(rubiks_cube, "rubiks_cube.cnf")
+    sat, actions = solver.run(Variable.t_max)
 
     print("SATISFIABLE" if sat else "UNSATISFIABLE")
 
