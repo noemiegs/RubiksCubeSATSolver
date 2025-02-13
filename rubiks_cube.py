@@ -53,8 +53,8 @@ class RubiksCube:
         }
 
     def get_vars_from_corner_pos(
-        self, pos: CornerPos, t: int
-    ) -> tuple[Var.Corners.x, Var.Corners.theta]:
+        self, pos: CornerPos
+    ) -> tuple[CornerPos, CornerOrientation]:
         x, y, z = Var.Corners.g(pos)
 
         colors = [
@@ -85,11 +85,9 @@ class RubiksCube:
             np.argmax([color in (Color.WHITE, Color.YELLOW) for color in colors]),
         )
 
-        return Var.Corners.x(pos, idx, t), Var.Corners.theta(pos, orientation, t)
+        return idx, orientation
 
-    def get_vars_from_edge_pos(
-        self, pos: EdgePos, t: int
-    ) -> tuple[Var.Edges.x, Var.Edges.theta]:
+    def get_vars_from_edge_pos(self, pos: EdgePos) -> tuple[EdgePos, EdgeOrientation]:
         coords = list(Var.Edges.g(pos))
 
         axis = np.argmax([0 < p < Variable.cube_size - 1 for p in coords]).item()
@@ -186,9 +184,9 @@ class RubiksCube:
             )
         assert idx is not None, f"Invalid edge colors: {colors}"
 
-        return Var.Edges.x(pos, idx, t), Var.Edges.theta(pos, orientation, t)
+        return idx, orientation
 
-    def get_vars_from_centers_pos(self, pos: CenterPos, t: int) -> Var.Centers.x:
+    def get_vars_from_center_pos(self, pos: CenterPos) -> CenterPos:
         x, y, z = Var.Centers.g(pos)
 
         # TODO : Change it for n*n*n cubes
@@ -207,7 +205,7 @@ class RubiksCube:
             color = Color(self.faces[Face.BACK][1, 1])
         assert color is not None, f"Invalid center position: {pos}"
 
-        idx = {
+        return {
             Color.BLUE: 0,
             Color.GREEN: 1,
             Color.RED: 2,
@@ -215,8 +213,6 @@ class RubiksCube:
             Color.WHITE: 4,
             Color.YELLOW: 5,
         }[color]
-
-        return Var.Centers.x(pos, idx, t)
 
     def _up_face_and_slice(self, face: Face, depth: int) -> tuple[Face, slice]:
         return {

@@ -27,11 +27,20 @@ def generate_true_instance(cube: RubiksCube, moves: list[str]) -> list[Variable]
 
 def update_true_instance(cube: RubiksCube, true_instance: list[Variable], t: int):
     for pos in Var.Corners.pos_range():
-        true_instance += list(cube.get_vars_from_corner_pos(pos, t))
+        idx, o = cube.get_vars_from_corner_pos(pos)
+        true_instance += [
+            *Var.Corners.x.from_decoded(pos, idx, t),
+            Var.Corners.theta(pos, o, t),
+        ]
     for pos in Var.Edges.pos_range():
-        true_instance += list(cube.get_vars_from_edge_pos(pos, t))
+        idx, o = cube.get_vars_from_edge_pos(pos)
+        true_instance += [
+            *Var.Edges.x.from_decoded(pos, idx, t),
+            Var.Edges.theta(pos, o, t),
+        ]
     for pos in Var.Centers.pos_range():
-        true_instance += [cube.get_vars_from_centers_pos(pos, t)]
+        idx = cube.get_vars_from_center_pos(pos)
+        true_instance += [Var.Centers.x(pos, idx, t)]
 
 
 def main(size: Size = (3, 3, 3)):
@@ -40,27 +49,12 @@ def main(size: Size = (3, 3, 3)):
     Var.depths = list(range(Variable.cube_size - 1))
 
     rubiks_cube = RubiksCube(size)
-    moves = rubiks_cube.shuffle(faces=(Face.BACK, Face.RIGHT, Face.BOTTOM))
+    moves = rubiks_cube.shuffle(
+        Variable.t_max, faces=(Face.BACK, Face.RIGHT, Face.BOTTOM)
+    )
 
     solver = RubiksCubeSolver(rubiks_cube, "rubiks_cube.cnf")
-    sat, actions = solver.run(
-        Variable.t_max,
-        [
-            Step.WhiteCross(),
-            Step.WhiteCorners(),
-            Step.SecondCrownCenters(),
-            Step.SecondCrownEdge(8),
-            Step.SecondCrownEdge(9),
-            Step.SecondCrownEdge(10),
-            Step.SecondCrownEdge(11),
-            Step.YellowLine(),
-            Step.OtherYellowLine(),
-            Step.FinalCrownCorners(4),
-            Step.FinalCrownCorners(5),
-            Step.FinalCrownCorners(6),
-            Step.FinalCrownCorners(7),
-        ],
-    )
+    sat, actions = solver.run(Variable.t_max)
 
     print("SATISFIABLE" if sat else "UNSATISFIABLE")
 
@@ -72,6 +66,13 @@ def main(size: Size = (3, 3, 3)):
             for action in actions
         ]
         rubiks_cube.animate(RubiksCube.parse_moves(moves), speed=2)
+    else:
+        true_instance = generate_true_instance(rubiks_cube, moves)
+        clauses = solver.generate_clauses(rubiks_cube)
+
+        _, unsatclauses = solver.verify(true_instance, clauses)
+        for clause in unsatclauses:
+            print(clause)
 
 
 if __name__ == "__main__":
