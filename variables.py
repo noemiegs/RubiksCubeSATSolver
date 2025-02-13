@@ -17,7 +17,7 @@ from variables_abc import Variable, VariableParent, VariableX, VariableTheta
 class Var:
     faces = [Face.RIGHT, Face.BOTTOM, Face.BACK]
     directions = [Direction.CLOCKWISE, Direction.HALF_TURN, Direction.COUNTERCLOCKWISE]
-    depths = []
+    depths: list[int] = []
 
     class Corners(VariableParent[CornerPos]):
         class x(VariableX[CornerPos]):
@@ -210,9 +210,9 @@ class Var:
             ) -> "Var.Edges.theta":
                 if not self.will_rotate(face, depth):
                     return Var.Edges.theta(self.pos, self.orientation, self.t + 1)
-                
+
                 new_pos = self.rotate_cube(face, direction, depth)
-                
+
                 if direction == Direction.HALF_TURN:
                     return Var.Edges.theta(new_pos, self.orientation, self.t + 1)
 

@@ -1,5 +1,6 @@
 from rubiks_cube import RubiksCube, Size
 from rubiks_cube_solver_3_3_3 import RubiksCubeSolver
+import step as Step
 from utils import Face
 from variables import Var
 from variables_abc import Variable
@@ -34,7 +35,7 @@ def update_true_instance(cube: RubiksCube, true_instance: list[Variable], t: int
 
 
 def main(size: Size = (3, 3, 3)):
-    Variable.t_max = 30
+    Variable.t_max = 12
     Variable.cube_size = size[0]
     Var.depths = list(range(Variable.cube_size - 1))
 
@@ -42,7 +43,24 @@ def main(size: Size = (3, 3, 3)):
     moves = rubiks_cube.shuffle(faces=(Face.BACK, Face.RIGHT, Face.BOTTOM))
 
     solver = RubiksCubeSolver(rubiks_cube, "rubiks_cube.cnf")
-    sat, actions = solver.run(Variable.t_max)
+    sat, actions = solver.run(
+        Variable.t_max,
+        [
+            Step.WhiteCross(),
+            Step.WhiteCorners(),
+            Step.SecondCrownCenters(),
+            Step.SecondCrownEdge(8),
+            Step.SecondCrownEdge(9),
+            Step.SecondCrownEdge(10),
+            Step.SecondCrownEdge(11),
+            Step.YellowLine(),
+            Step.OtherYellowLine(),
+            Step.FinalCrownCorners(4),
+            Step.FinalCrownCorners(5),
+            Step.FinalCrownCorners(6),
+            Step.FinalCrownCorners(7),
+        ],
+    )
 
     print("SATISFIABLE" if sat else "UNSATISFIABLE")
 
