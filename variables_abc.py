@@ -148,8 +148,8 @@ class VariableState(Variable, Generic[TPos], ABC):
 
 
 class VariableX(VariableState[TPos], Generic[TPos], ABC):
-    def __init__(self, pos: TPos, idx: TPos, t: int) -> None:
-        self.idx: TPos = idx
+    def __init__(self, pos: TPos, idx: int, t: int) -> None:
+        self.idx = idx
         super().__init__(pos, t)
 
     def rotate(self, face: Face, direction: Direction, depth: int) -> "VariableX":
@@ -158,6 +158,12 @@ class VariableX(VariableState[TPos], Generic[TPos], ABC):
             self.idx,
             self.t + 1,
         )
+
+    @staticmethod
+    def encode(pos: TPos) -> tuple[int, ...]: ...
+
+    @staticmethod
+    def from_decoded(pos: TPos, decoded: TPos, t: int) -> tuple["VariableX", ...]: ...
 
 
 class VariableTheta(VariableState[TPos], Generic[TPos, TOrientation], ABC):

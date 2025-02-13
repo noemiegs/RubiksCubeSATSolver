@@ -11,12 +11,13 @@ def generate_final_clauses_x(x: type[VariableX]) -> list[NamedClause]:
     clauses: list[NamedClause] = []
 
     for idx in x.parent().pos_range():
-        clauses.append(
-            (
-                f"Etat final {x.__class__.__qualname__} x, position du cube {idx}",
-                [x(idx, idx, Variable.t_max)],
+        for var in x.from_decoded(idx, idx, Variable.t_max):
+            clauses.append(
+                (
+                    f"Etat final {x.__class__.__qualname__} x, position du cube {idx}",
+                    [var],
+                )
             )
-        )
 
     return clauses
 
@@ -88,12 +89,11 @@ class WhiteCross(Step):
             )
         )
         for idx in [0, 1, 4, 5]:
-            clauses.append(
-                (
-                    f"Etat final WhiteCrossStep x, edge {idx}",
-                    [Var.Edges.x(idx, idx, Variable.t_max)],
-                )
-            )
+            clauses += [
+                cast(NamedClause, (f"Etat final WhiteCrossStep x, edge {idx}", [var]))
+                for var in Var.Edges.x.from_decoded(idx, idx, Variable.t_max)
+            ]
+
             clauses.append(
                 (
                     f"Etat final WhiteCrossStep theta, edge {idx}",
@@ -109,12 +109,13 @@ class WhiteCorners(Step):
         for idx in [0, 1, 2, 3]:
             idx = cast(CornerPos, idx)
 
-            clauses.append(
-                (
-                    f"Etat final WhiteCorners x, corner {idx}",
-                    [Var.Corners.x(idx, idx, Variable.t_max)],
+            for var in Var.Corners.x.from_decoded(idx, idx, Variable.t_max):
+                clauses.append(
+                    (
+                        f"Etat final WhiteCorners x, corner {idx}",
+                        [var],
+                    )
                 )
-            )
             clauses.append(
                 (
                     f"Etat final WhiteCorners theta, corner {idx}",
@@ -262,9 +263,11 @@ class FinalCrownCorners(Step):
 
     def generate_final_clauses(self) -> list[tuple[str, list[Variable]]]:
         return [
-            (
-                f"Etat final SecondCrown x, corner {self.idx}",
-                [Var.Corners.x(self.idx, self.idx, Variable.t_max)],
+            *(
+                (f"Etat final SecondCrown x, corner {self.idx}", [var])
+                for var in Var.Corners.x.from_decoded(
+                    self.idx, self.idx, Variable.t_max
+                )
             ),
             (
                 f"Etat final SecondCrown theta, corner {self.idx}",

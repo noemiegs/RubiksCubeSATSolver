@@ -22,7 +22,7 @@ class Var:
     class Corners(VariableParent[CornerPos]):
         class x(VariableX[CornerPos]):
             def compute_id(self) -> int:
-                return self.pos + self.idx * 8 + self.t * 64 + 1
+                return self.pos + self.idx * 8 + self.t * 24 + 1
 
             @staticmethod
             def parent() -> type["Var.Corners"]:
@@ -30,16 +30,29 @@ class Var:
 
             @staticmethod
             def n_vars() -> int:
-                return 64 * (Variable.t_max + 1)
+                return 24 * (Variable.t_max + 1)
 
             @staticmethod
             def from_int(var: int) -> "Var.Corners.x":
                 var -= 1
                 return Var.Corners.x(
                     var % 8,  # type: ignore
-                    (var // 8) % 8,  # type: ignore
-                    (var // 64) % (Variable.t_max + 1),
+                    (var // 8) % 3,  # type: ignore
+                    (var // 24) % (Variable.t_max + 1),
                 )
+
+            @staticmethod
+            def encode(pos: CornerPos) -> tuple[int, int, int]:
+                return 1 if pos & 1 else -1, 1 if pos & 2 else -1, 1 if pos & 4 else -1
+
+            @staticmethod
+            def from_decoded(
+                pos: CornerPos, decoded: CornerPos, t: int
+            ) -> tuple["Var.Corners.x", "Var.Corners.x", "Var.Corners.x"]:
+                return tuple(
+                    sign * Var.Corners.x(pos, idx, t)
+                    for idx, sign in enumerate(Var.Corners.x.encode(decoded))
+                )  # type: ignore
 
         class theta(VariableTheta[CornerPos, CornerOrientation]):
             def compute_id(self) -> int:
@@ -136,12 +149,13 @@ class Var:
         class x(VariableX[EdgePos]):
             def compute_id(self) -> int:
                 n_idx = 12 * (Variable.cube_size - 2)
+                log_n_idx = int(np.log2(n_idx)) + 1
 
                 return (
                     Var.Corners.n_vars()
                     + self.pos
                     + self.idx * n_idx
-                    + self.t * n_idx**2
+                    + self.t * n_idx * log_n_idx
                     + 1
                 )
 
@@ -152,18 +166,42 @@ class Var:
             @staticmethod
             def n_vars() -> int:
                 n_idx = 12 * (Variable.cube_size - 2)
-                return (Variable.t_max + 1) * n_idx**2
+
+                if n_idx == 0:
+                    return 0
+
+                log_n_idx = int(np.log2(n_idx)) + 1
+                return (Variable.t_max + 1) * n_idx * log_n_idx
 
             @staticmethod
             def from_int(var: int) -> "Var.Edges.x":
                 var -= 1 + Var.Corners.n_vars()
                 n_idx = 12 * (Variable.cube_size - 2)
+                log_n_idx = int(np.log2(n_idx)) + 1
 
                 return Var.Edges.x(
                     var % n_idx,
-                    (var // n_idx) % n_idx,
-                    (var // (n_idx**2)) % (Variable.t_max + 1),
+                    (var // n_idx) % log_n_idx,
+                    (var // (n_idx * log_n_idx)) % (Variable.t_max + 1),
                 )
+
+            @staticmethod
+            def encode(pos: EdgePos) -> tuple[int, ...]:
+                n_idx = 12 * (Variable.cube_size - 2)
+                log_n_idx = int(np.log2(n_idx)) + 1
+
+                return tuple(
+                    1 if s == "1" else -1 for s in np.binary_repr(pos, width=log_n_idx)
+                )
+
+            @staticmethod
+            def from_decoded(
+                pos: EdgePos, decoded: EdgePos, t: int
+            ) -> tuple["Var.Corners.x", ...]:
+                return tuple(
+                    sign * Var.Edges.x(pos, idx, t)
+                    for idx, sign in enumerate(Var.Edges.x.encode(decoded))
+                )  # type: ignore
 
         class theta(VariableTheta[EdgePos, EdgeOrientation]):
             def compute_id(self) -> int:
@@ -263,13 +301,14 @@ class Var:
         class x(VariableX[CenterPos]):
             def compute_id(self) -> int:
                 n_idx = 6 * (Variable.cube_size - 2) ** 2
+                log_n_idx = int(np.log2(n_idx)) + 1
 
                 return (
                     Var.Corners.n_vars()
                     + Var.Edges.n_vars()
                     + self.pos
                     + self.idx * n_idx
-                    + self.t * n_idx**2
+                    + self.t * n_idx * log_n_idx
                     + 1
                 )
 
@@ -280,18 +319,42 @@ class Var:
             @staticmethod
             def n_vars() -> int:
                 n_idx = 6 * (Variable.cube_size - 2) ** 2
-                return n_idx**2 * (Variable.t_max + 1)
+
+                if n_idx == 0:
+                    return 0
+
+                log_n_idx = int(np.log2(n_idx)) + 1
+                return n_idx * log_n_idx * (Variable.t_max + 1)
 
             @staticmethod
             def from_int(var: int) -> "Var.Centers.x":
                 var -= 1 + Var.Corners.n_vars() + Var.Edges.n_vars()
                 n_idx = 6 * (Variable.cube_size - 2) ** 2
+                log_n_idx = int(np.log2(n_idx)) + 1
 
                 return Var.Centers.x(
                     var % n_idx,
-                    (var // n_idx) % n_idx,
-                    (var // (n_idx**2)) % (Variable.t_max + 1),
+                    (var // n_idx) % log_n_idx,
+                    (var // (n_idx * log_n_idx)) % (Variable.t_max + 1),
                 )
+
+            @staticmethod
+            def encode(pos: CenterPos) -> tuple[int, ...]:
+                n_idx = 6 * (Variable.cube_size - 2) ** 2
+                log_n_idx = int(np.log2(n_idx)) + 1
+
+                return tuple(
+                    1 if s == "1" else -1 for s in np.binary_repr(pos, width=log_n_idx)
+                )
+
+            @staticmethod
+            def from_decoded(
+                pos: CenterPos, decoded: CenterPos, t: int
+            ) -> tuple["Var.Centers.x", ...]:
+                return tuple(
+                    sign * Var.Centers.x(pos, idx, t)
+                    for idx, sign in enumerate(Var.Centers.x.encode(decoded))
+                )  # type: ignore
 
         @staticmethod
         def n_vars() -> int:

@@ -33,19 +33,13 @@ class RubiksCubeSolver:
         clauses: list[NamedClause] = []
 
         for pos in Var.Corners.pos_range():
-            x, theta = cube.get_vars_from_corner_pos(pos, 0)
+            idx, theta = cube.get_vars_from_corner_pos(pos)
 
-            for idx in Var.Corners.pos_range():
-                sign = 1 if idx == x.idx else -1
-                clauses.append(
-                    (
-                        "Initial state position",
-                        [sign * Var.Corners.x(pos, idx, 0)],
-                    )
-                )
+            for var in Var.Corners.x.from_decoded(pos, idx, 0):
+                clauses.append(("Initial state position", [var]))
 
             for orientation in Var.Corners.theta.orientation_range():
-                sign = 1 if orientation == theta.orientation else -1
+                sign = 1 if orientation == theta else -1
                 clauses.append(
                     (
                         "Initial state orientation",
@@ -54,19 +48,13 @@ class RubiksCubeSolver:
                 )
 
         for pos in Var.Edges.pos_range():
-            x, theta = cube.get_vars_from_edge_pos(pos, 0)
+            idx, theta = cube.get_vars_from_edge_pos(pos)
 
-            for idx in Var.Edges.pos_range():
-                sign = 1 if idx == x.idx else -1
-                clauses.append(
-                    (
-                        "Initial state position",
-                        [sign * Var.Edges.x(pos, idx, 0)],
-                    )
-                )
+            for var in Var.Edges.x.from_decoded(pos, idx, 0):
+                clauses.append(("Initial state position", [var]))
 
             for orientation in Var.Edges.theta.orientation_range():
-                sign = 1 if orientation == theta.orientation else -1
+                sign = 1 if orientation == theta else -1
                 clauses.append(
                     (
                         "Initial state orientation",
@@ -75,16 +63,10 @@ class RubiksCubeSolver:
                 )
 
         for pos in Var.Centers.pos_range():
-            x = cube.get_vars_from_centers_pos(pos, 0)
+            idx = cube.get_vars_from_center_pos(pos)
 
-            for idx in Var.Centers.pos_range():
-                sign = 1 if idx == x.idx else -1
-                clauses.append(
-                    (
-                        "Initial state position",
-                        [sign * Var.Centers.x(pos, idx, 0)],
-                    )
-                )
+            for var in Var.Centers.x.from_decoded(pos, idx, 0):
+                clauses.append(("Initial state position", [var]))
 
         return clauses
 
@@ -94,20 +76,22 @@ class RubiksCubeSolver:
         clauses: list[NamedClause] = []
 
         for c in x.parent().pos_range():
-            for idx in x.parent().pos_range():
-                var_x = x(c, idx, action.t - 1)
-                var_x_prime = var_x.rotate(action.face, action.direction, action.depth)
-
+            for i in range(3):
+                var_x = x(c, i, action.t - 1)
+                var_x_prime = x(
+                    var_x.rotate_cube(action.face, action.direction, action.depth),
+                    i,
+                    action.t,
+                )
                 clauses.append(
                     (
-                        f"Transition des positions {x.parent().__name__}, id_cube {idx}, case_cube {c}, {action.face}, {action.direction}, depth {action.depth}, temps {action.t}, clause 1",
+                        f"Transition des positions {x.parent().__name__}, case_cube {c}, {action.face}, {action.direction}, depth {action.depth}, temps {action.t}, clause 1",
                         [var_x_prime, -var_x, -action],
                     )
                 )
-
                 clauses.append(
                     (
-                        f"Transition des positions {x.parent().__name__}, id_cube {idx}, case_cube {c}, {action.face}, {action.direction}, depth {action.depth}, temps {action.t}, clause 2",
+                        f"Transition des positions {x.parent().__name__}, case_cube {c}, {action.face}, {action.direction}, depth {action.depth}, temps {action.t}, clause 2",
                         [-var_x_prime, var_x, -action],
                     )
                 )
@@ -261,8 +245,23 @@ class RubiksCubeSolver:
             [action for action in sorted(actions, key=lambda a: a.t)],
         )
 
+    def generate_clauses(
+        self, cube: RubiksCube, steps: list[Step.Step] | None = None
+    ) -> list[NamedClause]:
+        if steps is None:
+            steps = [Step.Corners() + Step.Edges() + Step.Centers()]
+
+        clauses: list[NamedClause] = []
+        clauses += self.generate_initial_clauses(cube)
+        clauses += self.generate_transitions_clauses(steps[-1].actions)
+
+        for step in steps:
+            clauses += step.generate_final_clauses()
+
+        return clauses
+
     def run(
-        self, t_max: int, steps: list[Step.Step] = [Step.All]
+        self, t_max: int, steps: list[Step.Step] | None = None
     ) -> tuple[bool, list[Var.Actions]]:
         """
         Gère tout le processus : génération du CNF, exécution du solveur et extraction du résultat.
@@ -272,15 +271,17 @@ class RubiksCubeSolver:
         Variable.t_max = t_max
         actions = []
 
+        if steps is None:
+            steps = [Step.Corners() + Step.Edges() + Step.Centers()]
+
         temp_cube = self.rubiks_cube.copy()
 
         for step_idx in range(len(steps)):
-            print(f"Solving step {step_idx + 1}/{len(steps)} : {steps[step_idx].__class__.__name__}")
+            print(
+                f"Solving step {step_idx + 1}/{len(steps)} : {steps[step_idx].__class__.__name__}"
+            )
 
-            clauses = self.generate_initial_clauses(temp_cube)
-            clauses += self.generate_transitions_clauses(steps[step_idx].actions)
-            for step in steps[: step_idx + 1]:
-                clauses += step.generate_final_clauses()
+            clauses = self.generate_clauses(temp_cube, steps)
 
             sat, variables, actions_this_step = self.solve(
                 [clauses[1] for clauses in clauses]
@@ -296,7 +297,7 @@ class RubiksCubeSolver:
         return True, actions
 
     def find_optimal(
-        self, t_min: int = -1, t_max: int = 11, steps: list[Step.Step] = [Step.All]
+        self, t_min: int = -1, t_max: int = 11, steps: list[Step.Step] | None = None
     ) -> tuple[bool, list[Var.Actions]]:
         """
         Trouve la solution optimale.
