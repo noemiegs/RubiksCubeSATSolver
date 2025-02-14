@@ -323,12 +323,12 @@ class RubiksCube:
     def shuffle(
         self,
         n: int = 100,
-        faces: tuple[Face, ...] = tuple(Face),
-        directions: tuple[Direction, ...] = tuple(Direction),
-        depths: tuple[int, ...] | None = None,
+        faces: list[Face] = list(Face),
+        directions: list[Direction] = list(Direction),
+        depths: list[int] | None = None,
     ) -> list[str]:
         if depths is None:
-            depths = tuple(range(max(self.size)))
+            depths = list(range(max(self.size)))
 
         moves_str: list[str] = []
 
