@@ -1,11 +1,12 @@
 from rubiks_cube import RubiksCube
-from utils import Size, Face
+from utils import Size
 from rubiks_cube_solver import RubiksCubeSolver
+from variables import Var
 
 
 def main(size: Size = (2, 2, 2)):
     rubiks_cube = RubiksCube(size)
-    rubiks_cube.shuffle(faces=(Face.BACK, Face.RIGHT, Face.BOTTOM))
+    rubiks_cube.shuffle(faces=Var.faces)
 
     solver = RubiksCubeSolver(rubiks_cube)
     sat, actions = solver.run()
