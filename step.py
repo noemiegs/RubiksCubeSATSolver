@@ -3,33 +3,32 @@ from itertools import product
 from typing import cast
 
 from utils import CornerPos, Direction, Face
-from variables_abc import VariableTheta, VariableX, NamedClause
+from variables_abc import TIdx, TPos, VariableTheta, VariableX, NamedClause
 from variables import Var, Variable
 
 
-def generate_final_clauses_x(x: type[VariableX]) -> list[NamedClause]:
+def generate_final_clauses_x(x: type[VariableX[TPos]]) -> list[NamedClause]:
     clauses: list[NamedClause] = []
 
-    for idx in x.parent().pos_range():
-        for var in x.from_decoded(idx, idx, Variable.t_max):
+    for pos in x.pos_range():
+        for var in x.from_decoded(pos, pos, Variable.t_max):
             clauses.append(
-                (
-                    f"Etat final {x.__class__.__qualname__} x, position du cube {idx}",
-                    [var],
-                )
+                (f"Etat final {x.__qualname__} x, position du cube {pos}", [var])
             )
 
     return clauses
 
 
-def generate_final_clauses_theta(theta: type[VariableTheta]) -> list[NamedClause]:
+def generate_final_clauses_theta(
+    theta: type[VariableTheta[TPos, TIdx]],
+) -> list[NamedClause]:
     clauses: list[NamedClause] = []
 
-    for idx in theta.parent().pos_range():
+    for pos in theta.pos_range():
         clauses.append(
             (
-                f"Etat final {theta.__class__.__qualname__} theta, position du cube {idx}",
-                [theta(idx, 0, Variable.t_max)],
+                f"Etat final {theta.__qualname__} x, position du cube {pos}",
+                [theta(pos, 0, Variable.t_max)],  # type: ignore
             )
         )
 
@@ -41,6 +40,9 @@ class Step(ABC):
         self.actions: set[tuple[Face, Direction, int]] = {
             *product(Var.faces, Direction, Var.depths)
         }
+
+    def boundaries(self) -> tuple[int, int]:
+        return -1, 11
 
     @abstractmethod
     def generate_final_clauses(self) -> list[NamedClause]: ...
@@ -82,12 +84,9 @@ class Centers(Step):
 class WhiteCross(Step):
     def generate_final_clauses(self) -> list[NamedClause]:
         clauses: list[NamedClause] = []
-        clauses.append(
-            (
-                "Etat final WhiteCrossStep x, center",
-                [Var.Centers.x(4, 4, Variable.t_max)],
-            )
-        )
+        for var in Var.Centers.x.from_decoded(4, 4, Variable.t_max):
+            clauses.append(("Etat final WhiteCrossStep x, center", [var]))
+
         for idx in [0, 1, 4, 5]:
             clauses += [
                 cast(NamedClause, (f"Etat final WhiteCrossStep x, edge {idx}", [var]))
@@ -110,12 +109,8 @@ class WhiteCorners(Step):
             idx = cast(CornerPos, idx)
 
             for var in Var.Corners.x.from_decoded(idx, idx, Variable.t_max):
-                clauses.append(
-                    (
-                        f"Etat final WhiteCorners x, corner {idx}",
-                        [var],
-                    )
-                )
+                clauses.append((f"Etat final WhiteCorners x, corner {idx}", [var]))
+
             clauses.append(
                 (
                     f"Etat final WhiteCorners theta, corner {idx}",
@@ -134,12 +129,8 @@ class SecondCrownCenters(Step):
     def generate_final_clauses(self) -> list[tuple[str, list[Variable]]]:
         clauses: list[tuple[str, list[Variable]]] = []
         for idx in [0, 1, 2, 3]:
-            clauses.append(
-                (
-                    f"Etat final SecondCrown x, centers {idx}",
-                    [Var.Centers.x(idx, idx, Variable.t_max)],
-                )
-            )
+            for var in Var.Centers.x.from_decoded(idx, idx, Variable.t_max):
+                clauses.append((f"Etat final SecondCrown x, centers {idx}", [var]))
 
         return clauses
 
@@ -150,16 +141,34 @@ class SecondCrownEdge(Step):
         super().__init__()
 
     def generate_final_clauses(self) -> list[tuple[str, list[Variable]]]:
-        return [
+        clauses: list[NamedClause] = []
+        for var in Var.Edges.x.from_decoded(self.idx, self.idx, Variable.t_max):
+            clauses.append((f"Etat final SecondCrown x, edge {self.idx}", [var]))
+
+        clauses.append(
             (
-                f"Etat final SecondCrown x, corner {self.idx}",
-                [Var.Edges.x(self.idx, self.idx, Variable.t_max)],
-            ),
-            (
-                f"Etat final SecondCrown theta, corner {self.idx}",
+                f"Etat final SecondCrown theta, edge {self.idx}",
                 [Var.Edges.theta(self.idx, 0, Variable.t_max)],
-            ),
-        ]
+            )
+        )
+
+        return clauses
+
+
+class SecondCrownEdges(Step):
+    def generate_final_clauses(self) -> list[NamedClause]:
+        clauses: list[NamedClause] = []
+        for idx in [8, 9, 10, 11]:
+            for var in Var.Edges.x.from_decoded(idx, idx, Variable.t_max):
+                clauses.append((f"Etat final SecondCrown x, edge {idx}", [var]))
+
+            clauses.append(
+                (
+                    f"Etat final SecondCrown theta, edge {idx}",
+                    [Var.Edges.theta(idx, 0, Variable.t_max)],
+                )
+            )
+        return clauses
 
 
 class YellowCross(Step):
@@ -172,19 +181,13 @@ class YellowCross(Step):
 
     def generate_final_clauses(self) -> list[NamedClause]:
         clauses: list[NamedClause] = []
-        clauses.append(
-            (
-                "Etat final WhiteCrossStep x, center",
-                [Var.Centers.x(5, 5, Variable.t_max)],
-            )
-        )
+        for var in Var.Centers.x.from_decoded(5, 5, Variable.t_max):
+            clauses.append(("Etat final WhiteCrossStep x, center", [var]))
+
         for idx in [2, 3, 6, 7]:
-            clauses.append(
-                (
-                    f"Etat final WhiteCrossStep x, edge {idx}",
-                    [Var.Edges.x(idx, idx, Variable.t_max)],
-                )
-            )
+            for var in Var.Edges.x.from_decoded(idx, idx, Variable.t_max):
+                clauses.append((f"Etat final WhiteCrossStep x, edge {idx}", [var]))
+
             clauses.append(
                 (
                     f"Etat final WhiteCrossStep theta, edge {idx}",
@@ -204,19 +207,13 @@ class YellowLine(Step):
 
     def generate_final_clauses(self) -> list[NamedClause]:
         clauses: list[NamedClause] = []
-        clauses.append(
-            (
-                "Etat final WhiteCrossStep x, center",
-                [Var.Centers.x(5, 5, Variable.t_max)],
-            )
-        )
+        for var in Var.Centers.x.from_decoded(5, 5, Variable.t_max):
+            clauses.append(("Etat final WhiteCrossStep x, center", [var]))
+
         for idx in [2, 3]:
-            clauses.append(
-                (
-                    f"Etat final WhiteCrossStep x, edge {idx}",
-                    [Var.Edges.x(idx, idx, Variable.t_max)],
-                )
-            )
+            for var in Var.Edges.x.from_decoded(idx, idx, Variable.t_max):
+                clauses.append((f"Etat final WhiteCrossStep x, edge {idx}", [var]))
+
             clauses.append(
                 (
                     f"Etat final WhiteCrossStep theta, edge {idx}",
@@ -234,15 +231,15 @@ class OtherYellowLine(Step):
             *product(Var.faces, [Direction.CLOCKWISE, Direction.COUNTERCLOCKWISE], [0]),
         }
 
+    def boundaries(self) -> tuple[int, int]:
+        return -1, 14
+
     def generate_final_clauses(self) -> list[NamedClause]:
         clauses: list[NamedClause] = []
         for idx in [6, 7]:
-            clauses.append(
-                (
-                    f"Etat final WhiteCrossStep x, edge {idx}",
-                    [Var.Edges.x(idx, idx, Variable.t_max)],
-                )
-            )
+            for var in Var.Edges.x.from_decoded(idx, idx, Variable.t_max):
+                clauses.append((f"Etat final WhiteCrossStep x, edge {idx}", [var]))
+
             clauses.append(
                 (
                     f"Etat final WhiteCrossStep theta, edge {idx}",
@@ -252,7 +249,27 @@ class OtherYellowLine(Step):
         return clauses
 
 
-class FinalCrownCorners(Step):
+class FinalCrownCornersPosition(Step):
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.actions = {
+            *product(Var.faces, [Direction.CLOCKWISE, Direction.COUNTERCLOCKWISE], [0]),
+        }
+    
+    def boundaries(self) -> tuple[int, int]:
+        return -1, 15
+
+    def generate_final_clauses(self) -> list[tuple[str, list[Variable]]]:
+        clauses: list[NamedClause] = []
+        for idx in [4, 5, 6, 7]:
+            for var in Var.Corners.x.from_decoded(idx, idx, Variable.t_max):  # type: ignore
+                clauses.append((f"Etat final SecondCrown x, corner {idx}", [var]))
+
+        return clauses
+
+
+class FinalCrownCornerOrientation(Step):
     def __init__(self, idx: CornerPos) -> None:
         self.idx: CornerPos = idx
         super().__init__()
@@ -261,18 +278,15 @@ class FinalCrownCorners(Step):
             *product(Var.faces, [Direction.CLOCKWISE, Direction.COUNTERCLOCKWISE], [0]),
         }
 
+    def boundaries(self) -> tuple[int, int]:
+        return -1, 14
+
     def generate_final_clauses(self) -> list[tuple[str, list[Variable]]]:
         return [
-            *(
-                (f"Etat final SecondCrown x, corner {self.idx}", [var])
-                for var in Var.Corners.x.from_decoded(
-                    self.idx, self.idx, Variable.t_max
-                )
-            ),
             (
                 f"Etat final SecondCrown theta, corner {self.idx}",
                 [Var.Corners.theta(self.idx, 0, Variable.t_max)],
-            ),
+            )
         ]
 
 
