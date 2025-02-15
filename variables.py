@@ -1,5 +1,4 @@
-from typing import Iterable, cast
-
+from typing import cast
 import numpy as np
 
 from utils import (
@@ -21,57 +20,26 @@ class Var:
 
     class Corners(VariableParent[CornerPos]):
         class x(VariableX[CornerPos]):
-            def compute_id(self) -> int:
-                return self.pos + self.idx * 8 + self.t * 64 + 1
+            @classmethod
+            def offset(cls) -> int:
+                return 1
 
-            @staticmethod
-            def parent() -> type["Var.Corners"]:
+            @classmethod
+            def parent(cls) -> type["Var.Corners"]:
                 return Var.Corners
-
-            @staticmethod
-            def n_vars() -> int:
-                return 64 * (Variable.t_max + 1)
-
-            @staticmethod
-            def from_int(var: int) -> "Var.Corners.x":
-                var -= 1
-                return Var.Corners.x(
-                    var % 8,  # type: ignore
-                    (var // 8) % 8,  # type: ignore
-                    (var // 64) % (Variable.t_max + 1),
-                )
 
         class theta(VariableTheta[CornerPos, CornerOrientation]):
-            def compute_id(self) -> int:
-                return (
-                    Var.Corners.x.n_vars()
-                    + self.pos
-                    + self.orientation * 8
-                    + self.t * 24
-                    + 1
-                )
+            @classmethod
+            def n_idx(cls) -> int:
+                return 3
 
-            @staticmethod
-            def parent() -> type["Var.Corners"]:
+            @classmethod
+            def offset(cls) -> int:
+                return 1 + Var.Corners.x.n_vars()
+
+            @classmethod
+            def parent(cls) -> type["Var.Corners"]:
                 return Var.Corners
-
-            @staticmethod
-            def n_vars() -> int:
-                return 24 * (Variable.t_max + 1)
-
-            @staticmethod
-            def from_int(var: int) -> "Var.Corners.theta":
-                var -= 1 + Var.Corners.x.n_vars()
-
-                return Var.Corners.theta(
-                    var % 8,  # type: ignore
-                    (var // 8) % 3,  # type: ignore
-                    (var // 24) % (Variable.t_max + 1),
-                )
-
-            @staticmethod
-            def orientation_range() -> Iterable[CornerOrientation]:
-                return range(3)  # type: ignore
 
             def rotate(
                 self,
@@ -80,12 +48,12 @@ class Var:
                 depth: int,
             ) -> "Var.Corners.theta":
                 if not self.will_rotate(face, depth):
-                    return Var.Corners.theta(self.pos, self.orientation, self.t + 1)
+                    return Var.Corners.theta(self.pos, self.idx, self.t + 1)
 
                 new_pos = self.rotate_cube(face, direction, depth)
 
                 if direction == Direction.HALF_TURN:
-                    return Var.Corners.theta(new_pos, self.orientation, self.t + 1)
+                    return Var.Corners.theta(new_pos, self.idx, self.t + 1)
 
                 def s(
                     i: CornerOrientation,
@@ -99,108 +67,61 @@ class Var:
                     return orientation
 
                 if face == Face.RIGHT:
-                    new_orientation = s(0, 2, self.orientation)
+                    new_orientation = s(0, 2, self.idx)
                 elif face == Face.BOTTOM:
-                    new_orientation = s(0, 1, self.orientation)
+                    new_orientation = s(0, 1, self.idx)
                 elif face == Face.BACK:
-                    new_orientation = s(1, 2, self.orientation)
+                    new_orientation = s(1, 2, self.idx)
                 else:
                     raise ValueError(f"Invalid face: {face}")
 
                 return Var.Corners.theta(new_pos, new_orientation, self.t + 1)
 
-        @staticmethod
-        def n_vars() -> int:
+        @classmethod
+        def n_vars(cls) -> int:
             return Var.Corners.x.n_vars() + Var.Corners.theta.n_vars()
 
-        @staticmethod
-        def g(pos: CornerPos) -> tuple[int, int, int]:
+        @classmethod
+        def g(cls, pos: CornerPos) -> tuple[int, int, int]:
             return (
                 (pos % 2) * (Variable.cube_size - 1),
                 ((pos // 2) % 2) * (Variable.cube_size - 1),
                 ((pos // 4) % 2) * (Variable.cube_size - 1),
             )
 
-        @staticmethod
-        def g_inv(c_x: int, c_y: int, c_z: int) -> CornerPos:
+        @classmethod
+        def g_inv(cls, c_x: int, c_y: int, c_z: int) -> CornerPos:
             return cast(
                 CornerPos,
                 int(c_x != 0) + 2 * int(c_y != 0) + 4 * int(c_z != 0),
             )
 
-        @staticmethod
-        def pos_range() -> Iterable[CornerPos]:
-            return range(8)  # type: ignore
+        @classmethod
+        def n_pos(cls) -> int:
+            return 8
 
     class Edges(VariableParent[EdgePos]):
         class x(VariableX[EdgePos]):
-            def compute_id(self) -> int:
-                n_idx = 12 * (Variable.cube_size - 2)
+            @classmethod
+            def offset(cls) -> int:
+                return 1 + Var.Corners.n_vars()
 
-                return (
-                    Var.Corners.n_vars()
-                    + self.pos
-                    + self.idx * n_idx
-                    + self.t * n_idx**2
-                    + 1
-                )
-
-            @staticmethod
-            def parent() -> type["Var.Edges"]:
+            @classmethod
+            def parent(cls) -> type["Var.Edges"]:
                 return Var.Edges
-
-            @staticmethod
-            def n_vars() -> int:
-                n_idx = 12 * (Variable.cube_size - 2)
-                return (Variable.t_max + 1) * n_idx**2
-
-            @staticmethod
-            def from_int(var: int) -> "Var.Edges.x":
-                var -= 1 + Var.Corners.n_vars()
-                n_idx = 12 * (Variable.cube_size - 2)
-
-                return Var.Edges.x(
-                    var % n_idx,
-                    (var // n_idx) % n_idx,
-                    (var // (n_idx**2)) % (Variable.t_max + 1),
-                )
 
         class theta(VariableTheta[EdgePos, EdgeOrientation]):
-            def compute_id(self) -> int:
-                n_idx = 12 * (Variable.cube_size - 2)
+            @classmethod
+            def n_idx(cls) -> int:
+                return 1
 
-                return (
-                    Var.Corners.n_vars()
-                    + Var.Edges.x.n_vars()
-                    + self.pos
-                    + self.orientation * n_idx
-                    + self.t * 2 * n_idx
-                    + 1
-                )
+            @classmethod
+            def offset(cls) -> int:
+                return 1 + Var.Corners.n_vars() + Var.Edges.x.n_vars()
 
-            @staticmethod
-            def parent() -> type["Var.Edges"]:
+            @classmethod
+            def parent(cls) -> type["Var.Edges"]:
                 return Var.Edges
-
-            @staticmethod
-            def n_vars() -> int:
-                n_idx = 12 * (Variable.cube_size - 2)
-                return 2 * n_idx * (Variable.t_max + 1)
-
-            @staticmethod
-            def from_int(var: int) -> "Var.Edges.theta":
-                var -= 1 + Var.Corners.n_vars() + Var.Edges.x.n_vars()
-                n_idx = 12 * (Variable.cube_size - 2)
-
-                return Var.Edges.theta(
-                    var % n_idx,  # type: ignore
-                    (var // n_idx) % 2,  # type: ignore
-                    (var // (2 * n_idx)) % (Variable.t_max + 1),
-                )
-
-            @staticmethod
-            def orientation_range() -> Iterable[EdgeOrientation]:
-                return range(2)  # type: ignore
 
             def rotate(
                 self,
@@ -209,24 +130,24 @@ class Var:
                 depth: int,
             ) -> "Var.Edges.theta":
                 if not self.will_rotate(face, depth):
-                    return Var.Edges.theta(self.pos, self.orientation, self.t + 1)
+                    return Var.Edges.theta(self.pos, 0, self.t + 1, self.is_true)
 
                 new_pos = self.rotate_cube(face, direction, depth)
 
                 if direction == Direction.HALF_TURN:
-                    return Var.Edges.theta(new_pos, self.orientation, self.t + 1)
+                    return Var.Edges.theta(new_pos, 0, self.t + 1, self.is_true)
 
                 if face != Face.RIGHT and depth == 0:
-                    return Var.Edges.theta(new_pos, self.orientation, self.t + 1)
+                    return Var.Edges.theta(new_pos, 0, self.t + 1, self.is_true)
 
-                return Var.Edges.theta(new_pos, 1 - self.orientation, self.t + 1)
+                return Var.Edges.theta(new_pos, 0, self.t + 1, not self.is_true)
 
-        @staticmethod
-        def n_vars() -> int:
+        @classmethod
+        def n_vars(cls) -> int:
             return Var.Edges.x.n_vars() + Var.Edges.theta.n_vars()
 
-        @staticmethod
-        def g(pos: EdgePos) -> tuple[int, int, int]:
+        @classmethod
+        def g(cls, pos: EdgePos) -> tuple[int, int, int]:
             axis_pos = (pos % (Variable.cube_size - 2)) + 1
 
             pos_ = pos // (Variable.cube_size - 2)
@@ -240,8 +161,8 @@ class Var:
 
             return other_coords[0], other_coords[1], other_coords[2]
 
-        @staticmethod
-        def g_inv(c_x: int, c_y: int, c_z: int) -> EdgePos:
+        @classmethod
+        def g_inv(cls, c_x: int, c_y: int, c_z: int) -> EdgePos:
             coords = [c_x, c_y, c_z]
 
             axis = np.argmax([0 < p < Variable.cube_size - 1 for p in coords]).item()
@@ -255,50 +176,26 @@ class Var:
                 - 1,
             )
 
-        @staticmethod
-        def pos_range() -> Iterable[EdgePos]:
-            return range(12 * (Variable.cube_size - 2))
+        @classmethod
+        def n_pos(cls) -> int:
+            return 12 * (Variable.cube_size - 2)
 
     class Centers(VariableParent[CenterPos]):
         class x(VariableX[CenterPos]):
-            def compute_id(self) -> int:
-                n_idx = 6 * (Variable.cube_size - 2) ** 2
+            @classmethod
+            def offset(cls) -> int:
+                return 1 + Var.Corners.n_vars() + Var.Edges.n_vars()
 
-                return (
-                    Var.Corners.n_vars()
-                    + Var.Edges.n_vars()
-                    + self.pos
-                    + self.idx * n_idx
-                    + self.t * n_idx**2
-                    + 1
-                )
-
-            @staticmethod
-            def parent() -> type["Var.Centers"]:
+            @classmethod
+            def parent(cls) -> type["Var.Centers"]:
                 return Var.Centers
 
-            @staticmethod
-            def n_vars() -> int:
-                n_idx = 6 * (Variable.cube_size - 2) ** 2
-                return n_idx**2 * (Variable.t_max + 1)
-
-            @staticmethod
-            def from_int(var: int) -> "Var.Centers.x":
-                var -= 1 + Var.Corners.n_vars() + Var.Edges.n_vars()
-                n_idx = 6 * (Variable.cube_size - 2) ** 2
-
-                return Var.Centers.x(
-                    var % n_idx,
-                    (var // n_idx) % n_idx,
-                    (var // (n_idx**2)) % (Variable.t_max + 1),
-                )
-
-        @staticmethod
-        def n_vars() -> int:
+        @classmethod
+        def n_vars(cls) -> int:
             return Var.Centers.x.n_vars()
 
-        @staticmethod
-        def g(pos: CenterPos) -> tuple[int, int, int]:
+        @classmethod
+        def g(cls, pos: CenterPos) -> tuple[int, int, int]:
             gamma = (Variable.cube_size - 2) ** 2
             alpha = pos // gamma
             beta = pos % gamma
@@ -316,8 +213,8 @@ class Var:
 
             return c_x, c_y, c_z
 
-        @staticmethod
-        def g_inv(c_x: int, c_y: int, c_z: int) -> CenterPos:
+        @classmethod
+        def g_inv(cls, c_x: int, c_y: int, c_z: int) -> CenterPos:
             gamma = (Variable.cube_size - 2) ** 2
             x_0 = 0
             x_max = gamma
@@ -348,18 +245,25 @@ class Var:
 
             return cast(CenterPos, center_pos)
 
-        @staticmethod
-        def pos_range() -> Iterable[CenterPos]:
-            return range(6 * (Variable.cube_size - 2) ** 2)
+        @classmethod
+        def n_pos(cls) -> int:
+            return 6 * (Variable.cube_size - 2) ** 2
 
     class Actions(Variable):
-        def __init__(self, face: Face, direction: Direction, depth: int, t: int):
+        def __init__(
+            self,
+            face: Face,
+            direction: Direction,
+            depth: int,
+            t: int,
+            is_true: bool = True,
+        ):
             self.face = face
             self.direction = direction
             self.depth = depth
             self.t = t
 
-            super().__init__()
+            super().__init__(is_true)
 
         def compute_id(self) -> int:
             return (
@@ -373,12 +277,12 @@ class Var:
                 + 1
             )
 
-        @staticmethod
-        def n_vars() -> int:
+        @classmethod
+        def n_vars(cls) -> int:
             return 9 * (Variable.t_max + 1) * (Variable.cube_size - 1)
 
-        @staticmethod
-        def from_int(var: int) -> "Var.Actions":
+        @classmethod
+        def from_int(cls, var: int) -> "Var.Actions":
             var -= 1 + Var.Corners.n_vars() + Var.Edges.n_vars() + Var.Centers.n_vars()
 
             return Var.Actions(
@@ -387,6 +291,9 @@ class Var:
                 (var // 9) % (Variable.cube_size - 1),
                 (var // (9 * (Variable.cube_size - 1))),
             )
+
+        def get_params(self) -> tuple[Face, Direction, int, int]:
+            return self.face, self.direction, self.depth, self.t
 
     @staticmethod
     def n_vars() -> int:
