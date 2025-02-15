@@ -28,33 +28,47 @@ def generate_true_instance(cube: RubiksCube, moves: list[str]) -> list[Variable]
 def update_true_instance(cube: RubiksCube, true_instance: list[Variable], t: int):
     for pos in Var.Corners.pos_range():
         idx, o = cube.get_vars_from_corner_pos(pos)
-        true_instance += [
-            *Var.Corners.x.from_decoded(pos, idx, t),
-            Var.Corners.theta(pos, o, t),
-        ]
+
+        true_instance.extend(Var.Corners.x.from_decoded(pos, idx, t))
+        true_instance.append(Var.Corners.theta(pos, o, t))
+
     for pos in Var.Edges.pos_range():
         idx, o = cube.get_vars_from_edge_pos(pos)
-        true_instance += [
-            *Var.Edges.x.from_decoded(pos, idx, t),
-            Var.Edges.theta(pos, o, t),
-        ]
+        true_instance.extend(Var.Edges.x.from_decoded(pos, idx, t))
+        true_instance.append(Var.Edges.theta(pos, 0, t, bool(o)))
+
     for pos in Var.Centers.pos_range():
         idx = cube.get_vars_from_center_pos(pos)
-        true_instance += [Var.Centers.x(pos, idx, t)]
+        true_instance.extend(Var.Centers.x.from_decoded(pos, idx, t))
 
 
 def main(size: Size = (3, 3, 3)):
-    Variable.t_max = 12
+    Variable.t_max = 9
     Variable.cube_size = size[0]
     Var.depths = list(range(Variable.cube_size - 1))
 
     rubiks_cube = RubiksCube(size)
-    moves = rubiks_cube.shuffle(
-        Variable.t_max, faces=(Face.BACK, Face.RIGHT, Face.BOTTOM)
-    )
+    moves = rubiks_cube.shuffle(faces=(Face.BACK, Face.RIGHT, Face.BOTTOM))
 
     solver = RubiksCubeSolver(rubiks_cube, "rubiks_cube.cnf")
-    sat, actions = solver.run(Variable.t_max)
+    sat, actions = solver.find_optimal(
+        steps=[
+            Step.WhiteCross(),
+            Step.WhiteCorners(),
+            Step.SecondCrownCenters(),
+            Step.SecondCrownEdge(8),
+            Step.SecondCrownEdge(9),
+            Step.SecondCrownEdge(10),
+            Step.SecondCrownEdge(11),
+            Step.YellowLine(),
+            Step.OtherYellowLine(),
+            Step.FinalCrownCornersPosition(),
+            Step.FinalCrownCornerOrientation(4),
+            Step.FinalCrownCornerOrientation(5),
+            Step.FinalCrownCornerOrientation(6),
+            Step.FinalCrownCornerOrientation(7),
+        ],
+    )
 
     print("SATISFIABLE" if sat else "UNSATISFIABLE")
 
@@ -67,7 +81,9 @@ def main(size: Size = (3, 3, 3)):
         ]
         rubiks_cube.animate(RubiksCube.parse_moves(moves), speed=2)
     else:
-        true_instance = generate_true_instance(rubiks_cube, moves)
+        true_instance = generate_true_instance(
+            rubiks_cube, RubiksCube.reverse_moves(moves)
+        )
         clauses = solver.generate_clauses(rubiks_cube)
 
         _, unsatclauses = solver.verify(true_instance, clauses)

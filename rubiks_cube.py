@@ -159,7 +159,7 @@ class RubiksCube:
             case _:
                 raise ValueError(f"Invalid edge position: {pos}")
 
-        orientation = cast(EdgeOrientation, int(colors[0].value > colors[1].value))
+        orientation = cast(EdgeOrientation, int(colors[0].value < colors[1].value))
         idx = None
         # X Axis
         if Color.BLUE not in colors and Color.GREEN not in colors:

@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Generic, Iterable, TypeVar
+from math import ceil, log2
+from typing import Generic, Iterable, TypeVar, cast
+
+import numpy as np
 
 from utils import (
     Direction,
@@ -16,9 +19,9 @@ class Variable(ABC):
     cube_size = 3
     t_max = 11
 
-    def __init__(self) -> None:
+    def __init__(self, is_true: bool = True) -> None:
         self.id = self.compute_id()
-        self.is_true = True
+        self.is_true = is_true
 
     def __get_subclass_attrs(self):
         return {
@@ -33,11 +36,13 @@ class Variable(ABC):
     @abstractmethod
     def compute_id(self) -> int: ...
 
-    @staticmethod
-    def n_vars() -> int: ...
+    @classmethod
+    @abstractmethod
+    def n_vars(cls) -> int: ...
 
-    @staticmethod
-    def from_int(var: int) -> "Variable": ...
+    @classmethod
+    @abstractmethod
+    def from_int(cls, var: int) -> "Variable": ...
 
     def id_repr(self) -> str:
         return ("" if self.is_true else "-") + str(self.id)
@@ -68,32 +73,91 @@ Clause = list[Variable]
 NamedClause = tuple[str, Clause]
 
 TPos = TypeVar("TPos", CornerPos, EdgePos, CenterPos)
-TOrientation = TypeVar("TOrientation", CornerOrientation, EdgeOrientation)
+TIdx = TypeVar(
+    "TIdx", CornerPos, EdgePos, CenterPos, CornerOrientation, EdgeOrientation
+)
 
 
 class VariableParent(ABC, Generic[TPos]):
-    @staticmethod
-    def n_vars() -> int: ...
+    @classmethod
+    @abstractmethod
+    def n_vars(cls) -> int: ...
 
-    @staticmethod
-    def g(pos: TPos) -> tuple[int, int, int]: ...
+    @classmethod
+    @abstractmethod
+    def g(cls, pos: TPos) -> tuple[int, int, int]: ...
 
-    @staticmethod
-    def g_inv(c_x: int, c_y: int, c_z: int) -> TPos: ...
+    @classmethod
+    @abstractmethod
+    def g_inv(cls, c_x: int, c_y: int, c_z: int) -> TPos: ...
 
-    @staticmethod
-    def pos_range() -> Iterable[TPos]: ...
+    @classmethod
+    @abstractmethod
+    def n_pos(cls) -> int: ...
+
+    @classmethod
+    def pos_range(cls) -> Iterable[TPos]:
+        return range(cls.n_pos())  # type: ignore
 
 
-class VariableState(Variable, Generic[TPos], ABC):
-    def __init__(self, pos: TPos, t: int) -> None:
+class VariableState(Variable, Generic[TPos, TIdx], ABC):
+    def __init__(self, pos: TPos, idx: TIdx, t: int, is_true: bool = True) -> None:
         self.pos: TPos = pos
+        self.idx: TIdx = idx
         self.t = t
 
-        super().__init__()
+        super().__init__(is_true)
 
-    @staticmethod
-    def parent() -> type[VariableParent]: ...
+    @classmethod
+    @abstractmethod
+    def parent(cls) -> type[VariableParent[TPos]]: ...
+
+    @classmethod
+    @abstractmethod
+    def offset(cls) -> int: ...
+
+    @classmethod
+    @abstractmethod
+    def n_idx(cls) -> int: ...
+
+    @classmethod
+    def idx_range(cls) -> Iterable[TIdx]:
+        return range(cls.n_idx())  # type: ignore
+
+    @classmethod
+    def n_pos(cls) -> int:
+        return cls.parent().n_pos()
+
+    @classmethod
+    def pos_range(cls) -> Iterable[TPos]:
+        return cls.parent().pos_range()
+
+    @classmethod
+    def from_int(cls, var: int) -> "VariableState[TPos, TIdx]":
+        var -= cls.offset()
+        n_pos = cls.n_pos()
+        n_idx = cls.n_idx()
+
+        return cls(
+            var % n_pos,  # type: ignore
+            (var // n_pos) % n_idx,  # type: ignore
+            (var // (n_idx * n_pos)) % (Variable.t_max + 1),
+        )
+
+    @classmethod
+    def n_vars(cls) -> int:
+        if cls.n_idx() == 0:
+            return 0
+
+        return cls.n_pos() * cls.n_idx() * (Variable.t_max + 1)
+
+    def compute_id(self) -> int:
+        return (
+            self.offset()
+            + self.pos
+            + self.idx * self.n_pos()
+            + self.t * self.n_idx() * self.n_pos()
+        )
 
     def g(self, pos: TPos) -> tuple[int, int, int]:
         return self.parent().g(pos)
@@ -144,32 +208,36 @@ class VariableState(Variable, Generic[TPos], ABC):
     @abstractmethod
     def rotate(
         self, face: Face, direction: Direction, depth: int
-    ) -> "VariableState": ...
+    ) -> "VariableState[TPos, TIdx]": ...
 
 
-class VariableX(VariableState[TPos], Generic[TPos], ABC):
-    def __init__(self, pos: TPos, idx: int, t: int) -> None:
-        self.idx = idx
-        super().__init__(pos, t)
-
-    def rotate(self, face: Face, direction: Direction, depth: int) -> "VariableX":
+class VariableX(VariableState[TPos, TPos], Generic[TPos]):
+    def rotate(self, face: Face, direction: Direction, depth: int) -> "VariableX[TPos]":
         return self.__class__(
             self.rotate_cube(face, direction, depth),
             self.idx,
             self.t + 1,
         )
 
-    @staticmethod
-    def encode(pos: TPos) -> tuple[int, ...]: ...
+    @classmethod
+    def n_idx(cls) -> int:
+        return ceil(log2(cls.n_pos()))
 
-    @staticmethod
-    def from_decoded(pos: TPos, decoded: TPos, t: int) -> tuple["VariableX", ...]: ...
+    @classmethod
+    def encode(cls, decoded_idx: int) -> tuple[int, ...]:
+        return tuple(
+            1 if s == "1" else -1
+            for s in np.binary_repr(decoded_idx, width=cls.n_idx())
+        )
+
+    @classmethod
+    def from_decoded(
+        cls, pos: TPos, idx_decoded: int, t: int
+    ) -> tuple["VariableState[TPos, TIdx]", ...]:
+        return tuple(
+            sign * cls(pos, cast(TPos, idx), t)
+            for idx, sign in enumerate(cls.encode(idx_decoded))
+        )  # type: ignore
 
 
-class VariableTheta(VariableState[TPos], Generic[TPos, TOrientation], ABC):
-    def __init__(self, pos: TPos, orientation: TOrientation, t: int) -> None:
-        self.orientation: TOrientation = orientation
-        super().__init__(pos, t)
-
-    @staticmethod
-    def orientation_range() -> Iterable[TOrientation]: ...
+class VariableTheta(VariableState[TPos, TIdx], Generic[TPos, TIdx]): ...

@@ -329,12 +329,12 @@ class RubiksCubeSolver:
         for cube_pos in range(8):
             cube_pos = cast(CornerPos, cube_pos)
 
-            x, theta = self.rubiks_cube.get_vars_from_corner_pos(cube_pos, 0)
+            x, theta = self.rubiks_cube.get_vars_from_corner_pos(cube_pos)
 
             for cube_idx in range(8):
                 cube_idx = cast(CornerPos, cube_idx)
 
-                sign = 1 if cube_idx == x.idx else -1
+                sign = 1 if cube_idx == x else -1
                 clauses.append(
                     ("Initial state position", [sign * Var.x(cube_pos, cube_idx, 0)])
                 )
@@ -342,7 +342,7 @@ class RubiksCubeSolver:
             for orientation in range(3):
                 orientation = cast(Orientation, orientation)
 
-                sign = 1 if orientation == theta.orientation else -1
+                sign = 1 if orientation == theta else -1
                 clauses.append(
                     (
                         "Initial state orientation",
