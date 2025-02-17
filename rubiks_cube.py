@@ -2,10 +2,11 @@ import numpy as np
 import pygame
 import random
 import re
+import imageio
 
 from itertools import pairwise
 from math import cos, sin, radians
-from typing import cast
+from typing import Sequence, cast
 from colorama import Fore, Style
 from utils import (
     CenterPos,
@@ -560,6 +561,8 @@ class RubiksCube:
         screen_size: tuple[int, int] = (600, 600),
         background_color: tuple[int, int, int] = (30, 30, 30),
         speed: float = 1,
+        fps: int = 30,
+        recording: bool = False,
     ) -> None:
         pygame.init()
         screen = pygame.display.set_mode(screen_size)
@@ -577,6 +580,9 @@ class RubiksCube:
         rotation_idx = 0
         angle_direction = 1
         target_angle = 0
+
+        frames = []
+        record_finished = False
 
         while running:
             screen.fill(background_color)
@@ -604,6 +610,9 @@ class RubiksCube:
 
                     target_angle = 90 * angle_direction
 
+            else:
+                record_finished = True
+
             if rotating_face is not None:
                 rotating_angle += speed * angle_direction
 
@@ -616,8 +625,13 @@ class RubiksCube:
                 screen, angle_x, angle_y, rotating_face, rotating_depth, rotating_angle
             )
 
+            if recording and not record_finished:
+                frame = pygame.surfarray.array3d(pygame.display.get_surface())
+                frame = np.transpose(frame, (1, 0, 2))
+                frames.append(frame)
+
             pygame.display.flip()
-            clock.tick(60)
+            clock.tick(fps)
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -639,6 +653,9 @@ class RubiksCube:
                     angle_y += dx * 0.5
 
                     last_mouse_pos = current_mouse_pos
+
+        if recording:
+            imageio.mimsave("output.gif", frames, fps=fps)
 
         pygame.quit()
 
