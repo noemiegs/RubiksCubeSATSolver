@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from itertools import product
 from typing import cast
 
+import numpy as np
+
 from utils import CornerPos, Direction, Face
 from variables_abc import TIdx, TPos, VariableTheta, VariableX, NamedClause
 from variables import Var, Variable
@@ -38,11 +40,11 @@ def generate_final_clauses_theta(
 class Step(ABC):
     def __init__(self) -> None:
         self.actions: set[tuple[Face, Direction, int]] = {
-            *product(Var.faces, Direction, Var.depths)
+            *product(Var.faces, Var.directions, Var.depths)
         }
 
-    def boundaries(self) -> tuple[int, int]:
-        return -1, 11
+    def t_median(self) -> int:
+        return 11
 
     @abstractmethod
     def generate_final_clauses(self) -> list[NamedClause]: ...
@@ -59,10 +61,8 @@ class Combined(Step):
         self.steps = steps
         self.actions = set.union(*(step.actions for step in steps))
 
-    def boundaries(self) -> tuple[int, int]:
-        return min(step.boundaries()[0] for step in self.steps), max(
-            step.boundaries()[1] for step in self.steps
-        )
+    def t_median(self) -> int:
+        return round(np.median([step.t_median() for step in self.steps]))
 
     def generate_final_clauses(self) -> list[NamedClause]:
         return [
@@ -77,10 +77,10 @@ class Corners(Step):
     def __init__(self) -> None:
         super().__init__()
 
-        self.actions = {*product(Var.faces, Direction, [0])}
+        self.actions = {*product(Var.faces, Var.directions, [0])}
 
-    def boundaries(self) -> tuple[int, int]:
-        return -1, 12
+    def t_median(self) -> int:
+        return 8
 
     def generate_final_clauses(self) -> list[NamedClause]:
         return generate_final_clauses_x(Var.Corners.x) + generate_final_clauses_theta(
@@ -96,8 +96,8 @@ class Edges(Step):
 
 
 class Centers(Step):
-    def boundaries(self) -> tuple[int, int]:
-        return -1, 3
+    def t_median(self) -> int:
+        return 2
 
     def generate_final_clauses(self) -> list[NamedClause]:
         return generate_final_clauses_x(Var.Centers.x)
@@ -120,7 +120,7 @@ class EdgePostionOnCircle(Step):
     def __init__(self) -> None:
         super().__init__()
 
-        self.actions = {*product(Var.faces, [Direction.HALF_TURN], Var.depths)} | {
+        self.actions = {*product(Var.faces, [Direction.HALF_TURN], [1])} | {
             *product(
                 [Face.BACK, Face.BOTTOM],
                 [Direction.CLOCKWISE, Direction.COUNTERCLOCKWISE],
@@ -128,8 +128,8 @@ class EdgePostionOnCircle(Step):
             )
         }
 
-    def boundaries(self) -> tuple[int, int]:
-        return -1, 15
+    def t_median(self) -> int:
+        return 11
 
     def generate_final_clauses(self) -> list[NamedClause]:
         clauses: list[NamedClause] = []
@@ -182,16 +182,10 @@ class FirstEdgePosition(Step):
     def __init__(self) -> None:
         super().__init__()
 
-        self.actions = {*product(Var.faces, [Direction.HALF_TURN], Var.depths)}  # | {
-        #     *product(
-        #         [Face.BACK, Face.BOTTOM],
-        #         [Direction.CLOCKWISE, Direction.COUNTERCLOCKWISE],
-        #         [0],
-        #     )
-        # }
+        self.actions = {*product(Var.faces, [Direction.HALF_TURN], Var.depths)}
 
-    def boundaries(self) -> tuple[int, int]:
-        return -1, 15
+    def t_median(self) -> int:
+        return 12
 
     def generate_final_clauses(self) -> list[NamedClause]:
         clauses: list[NamedClause] = []
@@ -206,16 +200,10 @@ class SecondEdgePosition(Step):
     def __init__(self) -> None:
         super().__init__()
 
-        self.actions = {*product(Var.faces, [Direction.HALF_TURN], Var.depths)}  # | {
-        #     *product(
-        #         [Face.BACK, Face.BOTTOM],
-        #         [Direction.CLOCKWISE, Direction.COUNTERCLOCKWISE],
-        #         [0],
-        #     )
-        # }
+        self.actions = {*product(Var.faces, [Direction.HALF_TURN], Var.depths)}
 
-    def boundaries(self) -> tuple[int, int]:
-        return -1, 15
+    def t_median(self) -> int:
+        return 13
 
     def generate_final_clauses(self) -> list[NamedClause]:
         clauses: list[NamedClause] = []
@@ -230,16 +218,12 @@ class ThirdEdgePosition(Step):
     def __init__(self) -> None:
         super().__init__()
 
-        self.actions = {*product(Var.faces, [Direction.HALF_TURN], Var.depths)}  # | {
-        #     *product(
-        #         [Face.BACK, Face.BOTTOM],
-        #         [Direction.CLOCKWISE, Direction.COUNTERCLOCKWISE],
-        #         [0],
-        #     )
-        # }
+        self.actions = {*product(Var.faces, [Direction.HALF_TURN], Var.depths)} | {
+            (Face.BACK, Direction.CLOCKWISE, 0)
+        }
 
-    def boundaries(self) -> tuple[int, int]:
-        return -1, 15
+    def t_median(self) -> int:
+        return 13
 
     def generate_final_clauses(self) -> list[NamedClause]:
         clauses: list[NamedClause] = []
@@ -293,7 +277,7 @@ class SecondCrownCenters(Step):
     def __init__(self) -> None:
         super().__init__()
 
-        self.actions = {*product([Face.BACK], Direction, [1])}
+        self.actions = {*product([Face.BACK], Var.directions, [1])}
 
     def generate_final_clauses(self) -> list[tuple[str, list[Variable]]]:
         clauses: list[tuple[str, list[Variable]]] = []
@@ -400,8 +384,8 @@ class OtherYellowLine(Step):
             *product(Var.faces, [Direction.CLOCKWISE, Direction.COUNTERCLOCKWISE], [0]),
         }
 
-    def boundaries(self) -> tuple[int, int]:
-        return -1, 14
+    def t_median(self) -> int:
+        return 11
 
     def generate_final_clauses(self) -> list[NamedClause]:
         clauses: list[NamedClause] = []
@@ -426,8 +410,8 @@ class FinalCrownCornersPosition(Step):
             *product(Var.faces, [Direction.CLOCKWISE, Direction.COUNTERCLOCKWISE], [0]),
         }
 
-    def boundaries(self) -> tuple[int, int]:
-        return -1, 15
+    def t_median(self) -> int:
+        return 12
 
     def generate_final_clauses(self) -> list[tuple[str, list[Variable]]]:
         clauses: list[NamedClause] = []
@@ -447,8 +431,8 @@ class FinalCrownCornerOrientation(Step):
             *product(Var.faces, [Direction.CLOCKWISE, Direction.COUNTERCLOCKWISE], [0]),
         }
 
-    def boundaries(self) -> tuple[int, int]:
-        return -1, 14
+    def t_median(self) -> int:
+        return 11
 
     def generate_final_clauses(self) -> list[tuple[str, list[Variable]]]:
         return [
@@ -457,6 +441,3 @@ class FinalCrownCornerOrientation(Step):
                 [Var.Corners.theta(self.idx, 0, Variable.t_max)],
             )
         ]
-
-
-All = Corners() + Edges() + Centers()

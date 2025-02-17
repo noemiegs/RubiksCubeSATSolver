@@ -200,7 +200,7 @@ class VariableState(Variable, Generic[TPos, TIdx], ABC):
 
             return rotate_i(face, *rotate_1(face, c_x, c_y, c_z), n_rotation - 1)
 
-        return self.g_inv(*rotate_i(face, c_x, c_y, c_z, 1 + direction.value))
+        return self.g_inv(*rotate_i(face, c_x, c_y, c_z, direction.value))
 
     @abstractmethod
     def rotate(

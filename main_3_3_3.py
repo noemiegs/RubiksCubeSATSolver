@@ -50,11 +50,9 @@ def main(size: int = 3):
 
     solver = RubiksCubeSolver(rubiks_cube, "rubiks_cube.cnf")
     sat, actions = solver.find_optimal(
-        # 11,
-        # rubiks_cube,
         steps=[
-            Step.Centers() + Step.Corners(),
-            Step.EdgeOrientation(),
+            Step.Corners(),
+            Step.EdgeOrientation() + Step.Centers(),
             Step.EdgePostionOnCircle(),
             Step.FirstEdgePosition()
             + Step.SecondEdgePosition()

@@ -17,6 +17,7 @@ Action = tuple[Face, Direction, int]
 
 class Var:
     faces = [Face.RIGHT, Face.BOTTOM, Face.BACK]
+    directions = [Direction.CLOCKWISE, Direction.HALF_TURN, Direction.COUNTERCLOCKWISE]
 
     @staticmethod
     def x(cube_pos: CubePos, cube_idx: CubePos, t: int) -> int:
@@ -36,7 +37,7 @@ class Var:
             64 * (RubiksCubeSolver.t_max + 1)
             + 24 * (RubiksCubeSolver.t_max + 1)
             + Var.faces.index(face) * 3
-            + direction.value
+            + (direction.value - 1)
             + t * 9
             + 1
         )
@@ -81,7 +82,7 @@ class Var:
         a = a % 9
         face = a // 3
         direction = a % 3
-        return (Var.faces[face], Direction(direction), 0), t
+        return (Var.faces[face], Direction(direction + 1), 0), t
 
     @staticmethod
     def g(cube_pos: CubePos) -> tuple[int, int, int]:
@@ -115,6 +116,8 @@ class Var:
                 return cast(CubePos, c_y + 2 * (1 - c_x) + 4 * c_z)
             raise ValueError(f"Invalid face: {face}")
 
+        if direction == Direction.NONE:
+            return cube_pos
         if direction == Direction.CLOCKWISE:
             return rotate_1_x(face, c_x, c_y, c_z)
         if direction == Direction.HALF_TURN:
@@ -191,12 +194,12 @@ class RubiksCubeSolver:
             clauses.append(
                 (
                     f"Action obligatoire à chaque étape, temps {t}",
-                    [Var.a(f, d, t) for (f, d) in product(Var.faces, Direction)],
+                    [Var.a(f, d, t) for (f, d) in product(Var.faces, Var.directions)],
                 )
             )
 
-            for f, d in product(Var.faces, Direction):
-                for f_prime, d_prime in product(Var.faces, Direction):
+            for f, d in product(Var.faces, Var.directions):
+                for f_prime, d_prime in product(Var.faces, Var.directions):
                     if (f, d) < (f_prime, d_prime):
                         clauses.append(
                             (
@@ -361,7 +364,7 @@ class RubiksCubeSolver:
         true_instance : dictionnaire des variables SAT à forcer à True (Pour debug uniquement).
         """
         Variable.cube_size = 2
-        
+
         clauses = self.generate_clauses()
         sat, result, actions = self.solve([clauses[1] for clauses in clauses])
 

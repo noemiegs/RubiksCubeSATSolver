@@ -30,9 +30,10 @@ class Color(Enum):
 
 
 class Direction(Enum):
-    CLOCKWISE = 0
-    HALF_TURN = 1
-    COUNTERCLOCKWISE = 2
+    NONE = 0
+    CLOCKWISE = 1
+    HALF_TURN = 2
+    COUNTERCLOCKWISE = 3
 
     @staticmethod
     def from_str(s: str) -> "Direction":
@@ -42,8 +43,13 @@ class Direction(Enum):
             "'": Direction.COUNTERCLOCKWISE,
         }[s]
 
+    @staticmethod
+    def not_none() -> list["Direction"]:
+        return [Direction.CLOCKWISE, Direction.HALF_TURN, Direction.COUNTERCLOCKWISE]
+
     def opposite(self) -> "Direction":
         return {
+            Direction.NONE: Direction.NONE,
             Direction.CLOCKWISE: Direction.COUNTERCLOCKWISE,
             Direction.HALF_TURN: Direction.HALF_TURN,
             Direction.COUNTERCLOCKWISE: Direction.CLOCKWISE,
@@ -58,6 +64,9 @@ class Direction(Enum):
 
     def __lt__(self, other: "Direction") -> bool:
         return self.value < other.value
+
+    def __add__(self, other: "Direction") -> "Direction":
+        return Direction((self.value + other.value) % 4)
 
 
 class Face(Enum):
