@@ -91,7 +91,7 @@ class RubiksCubeSolver:
         Génère les clauses pour les transitions.
         """
         if actions is None:
-            actions = {*product(Var.faces, Direction, Var.depths)}
+            actions = {*product(Var.faces, Var.directions, Var.depths)}
 
         clauses: list[NamedClause] = []
 
@@ -211,6 +211,45 @@ class RubiksCubeSolver:
 
         return clauses
 
+    def remove_duplicates(self, actions: list[Var.Actions]) -> list[Var.Actions]:
+        new_actions: list[Var.Actions] = []
+
+        for action in actions:
+            if len(new_actions) == 0:
+                new_actions.append(
+                    Var.Actions(
+                        action.face,
+                        action.direction,
+                        action.depth,
+                        len(new_actions) + 1,
+                    )
+                )
+                continue
+
+            prev_action = new_actions[-1]
+
+            if action.face == prev_action.face and action.depth == prev_action.depth:
+                new_direction = action.direction + prev_action.direction
+
+                if new_direction == Direction.NONE:
+                    new_actions.pop()
+
+                else:
+                    new_actions[-1] = Var.Actions(
+                        action.face, new_direction, action.depth, len(new_actions) + 1
+                    )
+            else:
+                new_actions.append(
+                    Var.Actions(
+                        action.face,
+                        action.direction,
+                        action.depth,
+                        len(new_actions) + 1,
+                    )
+                )
+
+        return new_actions
+
     def run(
         self, t_max: int, cube: RubiksCube, steps: list[Step.Step] | None = None
     ) -> tuple[bool, list[Var.Actions]]:
@@ -247,33 +286,29 @@ class RubiksCubeSolver:
 
         for step_idx in tqdm(range(len(steps))):
             step = steps[step_idx]
-            t_min, t_max = step.boundaries()
+            sat_found: bool = False
+            unsat_found: bool = False
+            t = step.t_median()
 
-            sat: bool = False
             actions_this_step: list[Var.Actions] = []
 
-            while t_min < t_max - 1:
-                t = (t_min + t_max) // 2
+            while not sat_found or not unsat_found:
+                sat, actions_ = self.run(t, cube, steps[: step_idx + 1])
 
-                sat_, actions_ = self.run(t, cube, steps[: step_idx + 1])
+                print(f"Step {step}, t = {t}, sat = {sat}")
 
-                print(f"Step {step}, t = {t}, sat = {sat_}")
-
-                if sat_:
-                    t_max = t
-                    sat = True
+                if sat:
+                    sat_found = True
                     actions_this_step = actions_
+                    t -= 1
 
                 else:
-                    t_min = t
-
-            if not sat:
-                print(f"Step {step} not satisfiable.")
-                return False, []
+                    unsat_found = True
+                    t += 1
 
             for action in actions_this_step:
                 cube.rotate(action.face, action.direction, action.depth)
 
             actions += actions_this_step
 
-        return True, actions
+        return True, self.remove_duplicates(actions)

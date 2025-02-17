@@ -270,7 +270,7 @@ class Var:
                 Var.Corners.n_vars()
                 + Var.Edges.n_vars()
                 + Var.Centers.n_vars()
-                + self.direction.value
+                + Var.directions.index(self.direction)
                 + Var.faces.index(self.face) * 3
                 + self.depth * 9
                 + self.t * 9 * (Variable.cube_size - 1)

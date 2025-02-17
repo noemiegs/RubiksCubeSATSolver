@@ -6,7 +6,7 @@ import imageio
 
 from itertools import pairwise
 from math import cos, sin, radians
-from typing import Sequence, cast
+from typing import cast
 from colorama import Fore, Style
 from utils import (
     CenterPos,
@@ -314,14 +314,14 @@ class RubiksCube:
             self._rotate_half_turn(face, depth)
             return
 
-        for i in range(direction.value + 1):
+        for _ in range(direction.value):
             self._rotate_clockwise(face, depth)
 
     def shuffle(
         self,
         n: int = 100,
         faces: list[Face] = list(Face),
-        directions: list[Direction] = list(Direction),
+        directions: list[Direction] = Direction.not_none(),
         depths: list[int] | None = None,
     ) -> list[str]:
         if depths is None:
@@ -654,7 +654,7 @@ class RubiksCube:
 
                     last_mouse_pos = current_mouse_pos
 
-        if recording:
+        if recording and frames:
             imageio.mimsave("output.gif", frames, fps=fps)
 
         pygame.quit()
