@@ -50,19 +50,38 @@ class Step(ABC):
     def __add__(self, other: "Step") -> "Step":
         return Combined(self, other)
 
+    def __repr__(self) -> str:
+        return self.__class__.__name__ + "()"
+
 
 class Combined(Step):
     def __init__(self, *steps: Step):
         self.steps = steps
         self.actions = set.union(*(step.actions for step in steps))
 
+    def boundaries(self) -> tuple[int, int]:
+        return min(step.boundaries()[0] for step in self.steps), max(
+            step.boundaries()[1] for step in self.steps
+        )
+
     def generate_final_clauses(self) -> list[NamedClause]:
         return [
             clause for step in self.steps for clause in step.generate_final_clauses()
         ]
 
+    def __repr__(self) -> str:
+        return " + ".join(repr(step) for step in self.steps)
+
 
 class Corners(Step):
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.actions = {*product(Var.faces, Direction, [0])}
+
+    def boundaries(self) -> tuple[int, int]:
+        return -1, 12
+
     def generate_final_clauses(self) -> list[NamedClause]:
         return generate_final_clauses_x(Var.Corners.x) + generate_final_clauses_theta(
             Var.Corners.theta
@@ -77,8 +96,158 @@ class Edges(Step):
 
 
 class Centers(Step):
+    def boundaries(self) -> tuple[int, int]:
+        return -1, 3
+
     def generate_final_clauses(self) -> list[NamedClause]:
         return generate_final_clauses_x(Var.Centers.x)
+
+
+class EdgeOrientation(Step):
+    def generate_final_clauses(self) -> list[NamedClause]:
+        clauses: list[NamedClause] = []
+        for pos in Var.Edges.pos_range():
+            clauses.append(
+                (
+                    f"Etat final EdgeOrientation theta, edge {pos}",
+                    [Var.Edges.theta(pos, 0, Variable.t_max)],
+                )
+            )
+        return clauses
+
+
+class EdgePostionOnCircle(Step):
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.actions = {*product(Var.faces, [Direction.HALF_TURN], Var.depths)} | {
+            *product(
+                [Face.BACK, Face.BOTTOM],
+                [Direction.CLOCKWISE, Direction.COUNTERCLOCKWISE],
+                [0],
+            )
+        }
+
+    def boundaries(self) -> tuple[int, int]:
+        return -1, 15
+
+    def generate_final_clauses(self) -> list[NamedClause]:
+        clauses: list[NamedClause] = []
+        for pos in [0, 1, 2, 3]:
+            clauses.append(
+                (
+                    f"Etat final EdgePosition x, edge {pos}",
+                    [-Var.Edges.x(pos, 0, Variable.t_max)],
+                )
+            )
+            clauses.append(
+                (
+                    f"Etat final EdgePosition x, edge {pos}",
+                    [-Var.Edges.x(pos, 1, Variable.t_max)],
+                )
+            )
+
+        for pos in [4, 5, 6, 7]:
+            clauses.append(
+                (
+                    f"Etat final EdgePosition x, edge {pos}",
+                    [-Var.Edges.x(pos, 0, Variable.t_max)],
+                )
+            )
+            clauses.append(
+                (
+                    f"Etat final EdgePosition x, edge {pos}",
+                    [Var.Edges.x(pos, 1, Variable.t_max)],
+                )
+            )
+
+        for pos in [8, 9, 10, 11]:
+            clauses.append(
+                (
+                    f"Etat final EdgePosition x, edge {pos}",
+                    [Var.Edges.x(pos, 0, Variable.t_max)],
+                )
+            )
+            clauses.append(
+                (
+                    f"Etat final EdgePosition x, edge {pos}",
+                    [-Var.Edges.x(pos, 1, Variable.t_max)],
+                )
+            )
+
+        return clauses
+
+
+class FirstEdgePosition(Step):
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.actions = {*product(Var.faces, [Direction.HALF_TURN], Var.depths)}  # | {
+        #     *product(
+        #         [Face.BACK, Face.BOTTOM],
+        #         [Direction.CLOCKWISE, Direction.COUNTERCLOCKWISE],
+        #         [0],
+        #     )
+        # }
+
+    def boundaries(self) -> tuple[int, int]:
+        return -1, 15
+
+    def generate_final_clauses(self) -> list[NamedClause]:
+        clauses: list[NamedClause] = []
+        for pos in [0, 1, 2, 3]:
+            for var in Var.Edges.x.from_decoded(pos, pos, Variable.t_max):
+                clauses.append((f"Etat final EdgePosition x, edge {pos}", [var]))
+
+        return clauses
+
+
+class SecondEdgePosition(Step):
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.actions = {*product(Var.faces, [Direction.HALF_TURN], Var.depths)}  # | {
+        #     *product(
+        #         [Face.BACK, Face.BOTTOM],
+        #         [Direction.CLOCKWISE, Direction.COUNTERCLOCKWISE],
+        #         [0],
+        #     )
+        # }
+
+    def boundaries(self) -> tuple[int, int]:
+        return -1, 15
+
+    def generate_final_clauses(self) -> list[NamedClause]:
+        clauses: list[NamedClause] = []
+        for pos in [4, 5, 6, 7]:
+            for var in Var.Edges.x.from_decoded(pos, pos, Variable.t_max):
+                clauses.append((f"Etat final EdgePosition x, edge {pos}", [var]))
+
+        return clauses
+
+
+class ThirdEdgePosition(Step):
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.actions = {*product(Var.faces, [Direction.HALF_TURN], Var.depths)}  # | {
+        #     *product(
+        #         [Face.BACK, Face.BOTTOM],
+        #         [Direction.CLOCKWISE, Direction.COUNTERCLOCKWISE],
+        #         [0],
+        #     )
+        # }
+
+    def boundaries(self) -> tuple[int, int]:
+        return -1, 15
+
+    def generate_final_clauses(self) -> list[NamedClause]:
+        clauses: list[NamedClause] = []
+        for pos in [8, 9, 10, 11]:
+            for var in Var.Edges.x.from_decoded(pos, pos, Variable.t_max):
+                clauses.append((f"Etat final EdgePosition x, edge {pos}", [var]))
+
+        return clauses
 
 
 class WhiteCross(Step):
@@ -256,7 +425,7 @@ class FinalCrownCornersPosition(Step):
         self.actions = {
             *product(Var.faces, [Direction.CLOCKWISE, Direction.COUNTERCLOCKWISE], [0]),
         }
-    
+
     def boundaries(self) -> tuple[int, int]:
         return -1, 15
 

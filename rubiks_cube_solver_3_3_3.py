@@ -257,6 +257,8 @@ class RubiksCubeSolver:
 
                 sat_, actions_ = self.run(t, cube, steps[: step_idx + 1])
 
+                print(f"Step {step}, t = {t}, sat = {sat_}")
+
                 if sat_:
                     t_max = t
                     sat = True
@@ -266,7 +268,7 @@ class RubiksCubeSolver:
                     t_min = t
 
             if not sat:
-                print(f"Step {step.__class__.__name__} not satisfiable.")
+                print(f"Step {step} not satisfiable.")
                 return False, []
 
             for action in actions_this_step:

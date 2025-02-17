@@ -1,4 +1,4 @@
-from rubiks_cube import RubiksCube, Size
+from rubiks_cube import RubiksCube
 from rubiks_cube_solver_3_3_3 import RubiksCubeSolver
 import step as Step
 from variables import Var
@@ -41,31 +41,24 @@ def update_true_instance(cube: RubiksCube, true_instance: list[Variable], t: int
         true_instance.extend(Var.Centers.x.from_decoded(pos, idx, t))
 
 
-def main(size: Size = (3, 3, 3)):
-    Variable.t_max = 10
-    Variable.cube_size = size[0]
+def main(size: int = 3):
+    Variable.cube_size = size
     Var.depths = list(range(Variable.cube_size - 1))
 
-    rubiks_cube = RubiksCube(size)
-    moves = rubiks_cube.shuffle(Variable.t_max, faces=Var.faces)
+    rubiks_cube = RubiksCube((size, size, size))
+    moves = rubiks_cube.shuffle(faces=Var.faces)
 
     solver = RubiksCubeSolver(rubiks_cube, "rubiks_cube.cnf")
     sat, actions = solver.find_optimal(
+        # 11,
+        # rubiks_cube,
         steps=[
-            Step.WhiteCross(),
-            Step.WhiteCorners(),
-            Step.SecondCrownCenters(),
-            Step.SecondCrownEdge(8),
-            Step.SecondCrownEdge(9),
-            Step.SecondCrownEdge(10),
-            Step.SecondCrownEdge(11),
-            Step.YellowLine(),
-            Step.OtherYellowLine(),
-            Step.FinalCrownCornersPosition(),
-            Step.FinalCrownCornerOrientation(4),
-            Step.FinalCrownCornerOrientation(5),
-            Step.FinalCrownCornerOrientation(6),
-            Step.FinalCrownCornerOrientation(7),
+            Step.Centers() + Step.Corners(),
+            Step.EdgeOrientation(),
+            Step.EdgePostionOnCircle(),
+            Step.FirstEdgePosition()
+            + Step.SecondEdgePosition()
+            + Step.ThirdEdgePosition(),
         ],
     )
 
@@ -78,7 +71,7 @@ def main(size: Size = (3, 3, 3)):
             RubiksCube.move_to_str(action.face, action.direction, action.depth)
             for action in actions
         ]
-        rubiks_cube.animate(RubiksCube.parse_moves(moves), speed=2)
+        rubiks_cube.animate(RubiksCube.parse_moves(moves), speed=5, recording=True)
     else:
         true_instance = generate_true_instance(
             rubiks_cube, RubiksCube.reverse_moves(moves)

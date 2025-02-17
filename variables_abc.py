@@ -146,9 +146,6 @@ class VariableState(Variable, Generic[TPos, TIdx], ABC):
 
     @classmethod
     def n_vars(cls) -> int:
-        if cls.n_idx() == 0:
-            return 0
-
         return cls.n_pos() * cls.n_idx() * (Variable.t_max + 1)
 
     def compute_id(self) -> int:
@@ -221,6 +218,8 @@ class VariableX(VariableState[TPos, TPos], Generic[TPos]):
 
     @classmethod
     def n_idx(cls) -> int:
+        if cls.n_pos() == 0:
+            return 0
         return ceil(log2(cls.n_pos()))
 
     @classmethod
