@@ -8,6 +8,7 @@ __pycache__/
 *.tmp
 *.swp
 .DS_Store  # Pour macOS
+pierre.py
 
 # Ignorer les fichiers de l'environnement virtuel
 venv/
@@ -18,3 +19,4 @@ venv/
 .idea/
 
 *.cnf
+credentials.json

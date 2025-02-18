@@ -1,6 +1,10 @@
 import subprocess
-from itertools import product
+import io
 
+from itertools import product
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload
+from google.oauth2 import service_account
 from tqdm import tqdm
 
 import step as Step
@@ -127,15 +131,46 @@ class RubiksCubeSolver:
 
         return clauses
 
+    def upload_to_drive(
+        self,
+        clauses: list[Clause],
+        folder_id="16CfwqqPviDAp7ECScSmXLh94nxyET5Am",
+    ):
+        creds = service_account.Credentials.from_service_account_file(
+            "credentials.json", scopes=["https://www.googleapis.com/auth/drive.file"]
+        )
+        service = build("drive", "v3", credentials=creds)
+
+        cnf_file = io.BytesIO(self.generate_str(clauses).encode("utf-8"))
+
+        file_metadata = {"name": self.cnf_filename, "parents": [folder_id]}
+        media = MediaIoBaseUpload(cnf_file, mimetype="text/plain")
+
+        file = (
+            service.files()
+            .create(body=file_metadata, media_body=media, fields="id")
+            .execute()
+        )
+        print(
+            f"File uploaded successfully! File ID: {file.get('id')} ({self.cnf_filename})"
+        )
+
+    def generate_str(self, clauses: list[Clause]) -> str:
+        """
+        Génère une chaîne de caractères pour les clauses.
+        """
+        s = f"p cnf {Var.n_vars()} {len(clauses)}\n"
+        for clause in clauses:
+            s += " ".join(map(lambda var: var.id_repr(), clause)) + " 0\n"
+        return s
+
     def generate_cnf_file(self, clauses: list[Clause]) -> None:
         """
         Génère le fichier CNF pour le problème.
         """
         # Écriture du fichier CNF
         with open(self.cnf_filename, "w") as f:
-            f.write(f"p cnf {Var.n_vars()} {len(clauses)}\n")
-            for clause in clauses:
-                f.write(" ".join(map(lambda var: var.id_repr(), clause)) + " 0\n")
+            f.write(self.generate_str(clauses))
 
     def verify(
         self, vars: list[Variable], clauses: list[NamedClause]
@@ -195,6 +230,9 @@ class RubiksCubeSolver:
             variables,
             [action for action in sorted(actions, key=lambda a: a.t)],
         )
+
+    def remove_name(self, clauses: list[NamedClause]) -> list[Clause]:
+        return [clause[1] for clause in clauses]
 
     def generate_clauses(
         self, cube: RubiksCube, steps: list[Step.Step] | None = None
