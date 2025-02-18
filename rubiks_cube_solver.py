@@ -1,261 +1,168 @@
 import subprocess
-from typing import Iterable, cast
+import io
+
 from itertools import product
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload
+from google.oauth2 import service_account
+from tqdm import tqdm
 
-from utils import CornerPos, Direction, Face
+import step as Step
+from utils import Direction, Face
 from rubiks_cube import RubiksCube
-from variables_abc import Variable
-
-CubePos = int
-Orientation = int
-
-
-Clause = list[int]
-NamedClause = tuple[str, Clause]
-Action = tuple[Face, Direction, int]
-
-
-class Var:
-    faces = [Face.RIGHT, Face.BOTTOM, Face.BACK]
-    directions = [Direction.CLOCKWISE, Direction.HALF_TURN, Direction.COUNTERCLOCKWISE]
-
-    @staticmethod
-    def x(cube_pos: CubePos, cube_idx: CubePos, t: int) -> int:
-        return cube_pos + cube_idx * 8 + t * 64 + 1
-
-    @staticmethod
-    def theta(cube_pos: CubePos, orientation: Orientation, t: int) -> int:
-        return (
-            64 * (RubiksCubeSolver.t_max + 1) + cube_pos + orientation * 8 + t * 24 + 1
-        )
-
-    @staticmethod
-    def a(face: Face, direction: Direction, t: int) -> int:
-        assert 0 < t <= RubiksCubeSolver.t_max, f"Invalid time: {t}"
-
-        return (
-            64 * (RubiksCubeSolver.t_max + 1)
-            + 24 * (RubiksCubeSolver.t_max + 1)
-            + Var.faces.index(face) * 3
-            + (direction.value - 1)
-            + t * 9
-            + 1
-        )
-
-    @staticmethod
-    def n_vars() -> int:
-        return (64 + 24 + 9) * (RubiksCubeSolver.t_max + 1)
-
-    @staticmethod
-    def decode(var: int) -> str:
-        prefix = "not " if var < 0 else ""
-        var = abs(var)
-
-        if var <= 64 * (RubiksCubeSolver.t_max + 1):
-            t = (var - 1) // 64
-            cube_pos = (var - 1) % 64
-            cube_idx = cube_pos // 8
-            cube_pos %= 8
-            return prefix + f"x({cube_pos}, {cube_idx}, {t})"
-
-        if var <= (64 + 24) * (RubiksCubeSolver.t_max + 1):
-            new_var = var - 64 * (RubiksCubeSolver.t_max + 1) - 1
-            t = new_var // 24
-            cube_pos = new_var % 24
-            orientation = cube_pos // 8
-            cube_pos %= 8
-            return prefix + f"theta({cube_pos}, {orientation}, {t})"
-
-        (face, direction, depth), t = Var.get_action_from(var)
-        return prefix + f"a({Face(face).name}, {Direction(direction).name}, {t})"
-
-    @staticmethod
-    def is_action(var: int) -> bool:
-        return (64 + 24) * (RubiksCubeSolver.t_max + 1) < var
-
-    @staticmethod
-    def get_action_from(a: int) -> tuple[Action, int]:
-        assert Var.is_action(a), f"Invalid action: {a}, {Var.decode(a)}"
-
-        a -= (64 + 24) * (RubiksCubeSolver.t_max + 1) + 1
-        t = a // 9
-        a = a % 9
-        face = a // 3
-        direction = a % 3
-        return (Var.faces[face], Direction(direction + 1), 0), t
-
-    @staticmethod
-    def g(cube_pos: CubePos) -> tuple[int, int, int]:
-        return cube_pos % 2, (cube_pos // 2) % 2, (cube_pos // 4) % 2
-
-    @staticmethod
-    def will_rotate(c_x: int, c_y: int, c_z: int, face: Face) -> bool:
-        if face == Face.RIGHT:
-            return c_x == 1
-        if face == Face.BOTTOM:
-            return c_y == 1
-        if face == Face.BACK:
-            return c_z == 1
-        return False
-
-    @staticmethod
-    def rotate_x(face: Face, direction: Direction, cube_pos: CubePos) -> CubePos:
-        assert face in {Face.RIGHT, Face.BOTTOM, Face.BACK}, f"Invalid face: {face}"
-
-        c_x, c_y, c_z = Var.g(cube_pos)
-
-        if not Var.will_rotate(c_x, c_y, c_z, face):
-            return cube_pos
-
-        def rotate_1_x(face: Face, c_x: int, c_y: int, c_z: int) -> CubePos:
-            if face == Face.RIGHT:
-                return cast(CubePos, c_x + 2 * c_z + 4 * (1 - c_y))
-            if face == Face.BOTTOM:
-                return cast(CubePos, (1 - c_z) + 2 * c_y + 4 * c_x)
-            if face == Face.BACK:
-                return cast(CubePos, c_y + 2 * (1 - c_x) + 4 * c_z)
-            raise ValueError(f"Invalid face: {face}")
-
-        if direction == Direction.NONE:
-            return cube_pos
-        if direction == Direction.CLOCKWISE:
-            return rotate_1_x(face, c_x, c_y, c_z)
-        if direction == Direction.HALF_TURN:
-            return rotate_1_x(face, *Var.g(rotate_1_x(face, c_x, c_y, c_z)))
-        if direction == Direction.COUNTERCLOCKWISE:
-            return rotate_1_x(
-                face, *Var.g(rotate_1_x(face, *Var.g(rotate_1_x(face, c_x, c_y, c_z))))
-            )
-
-    @staticmethod
-    def rotate_theta(
-        face: Face,
-        direction: Direction,
-        cube_pos: CubePos,
-        orientation: Orientation,
-    ) -> Orientation:
-        if direction == Direction.HALF_TURN:
-            return orientation
-
-        if not Var.will_rotate(*Var.g(cube_pos), face):
-            return orientation
-
-        def s(i: Orientation, j: Orientation, orientation: Orientation) -> Orientation:
-            if orientation == i:
-                return j
-            if orientation == j:
-                return i
-            return orientation
-
-        if face == Face.RIGHT:
-            return s(0, 2, orientation)
-        if face == Face.BOTTOM:
-            return s(0, 1, orientation)
-        if face == Face.BACK:
-            return s(1, 2, orientation)
-        raise ValueError(f"Invalid face: {face}")
+from variables import Var, Variable
+from variables_abc import Clause, NamedClause, TIdx, TPos, VariableState
 
 
 class RubiksCubeSolver:
-    t_max: int = 11
-
     def __init__(
-        self, rubiks_cube: RubiksCube, t_max: int = 11, cnf_filename="rubiks_cube.cnf"
+        self,
+        rubiks_cube: RubiksCube,
+        cnf_filename="rubiks_cube.cnf",
     ):
-        RubiksCubeSolver.t_max = t_max
-
         self.rubiks_cube = rubiks_cube
         self.cnf_filename = cnf_filename
 
-    def generate_clauses(self) -> list[NamedClause]:
-        """
-        Génère les clauses.
-        """
-        clauses: list[NamedClause] = self.generate_initial_clauses()
-        cube_pos = cast(Iterable[CubePos], range(8))
-        orientations = cast(Iterable[Orientation], range(3))
+    def generate_initial_clauses(
+        self, cube: RubiksCube | None = None
+    ) -> list[NamedClause]:
+        if cube is None:
+            cube = self.rubiks_cube
 
-        # Etat final
-        for idx in cube_pos:
-            clauses.append(
-                (f"Etat final, position du cube {idx}", [Var.x(idx, idx, self.t_max)])
-            )
+        clauses: list[NamedClause] = []
 
-        for idx in cube_pos:
-            clauses.append(
-                (
-                    f"Etat final, orientation du cube {idx}",
-                    [Var.theta(idx, 0, self.t_max)],
+        for pos in Var.Corners.pos_range():
+            idx, theta = cube.get_vars_from_corner_pos(pos)
+
+            for var in Var.Corners.x.from_decoded(pos, idx, 0):
+                clauses.append(("Initial state position", [var]))
+
+            for orientation in Var.Corners.theta.idx_range():
+                clauses.append(
+                    (
+                        "Initial state orientation",
+                        [Var.Corners.theta(pos, orientation, 0, orientation == theta)],
+                    )
                 )
+
+        for pos in Var.Edges.pos_range():
+            idx, theta = cube.get_vars_from_edge_pos(pos)
+
+            for var in Var.Edges.x.from_decoded(pos, idx, 0):
+                clauses.append(("Initial state position", [var]))
+
+            clauses.append(
+                ("Initial state orientation", [Var.Edges.theta(pos, 0, 0, bool(theta))])
             )
 
-        for t in range(1, self.t_max + 1):
+        for pos in Var.Centers.pos_range():
+            idx = cube.get_vars_from_center_pos(pos)
+
+            for var in Var.Centers.x.from_decoded(pos, idx, 0):
+                clauses.append(("Initial state position", [var]))
+
+        return clauses
+
+    def generate_clauses_transition(
+        self, state: type[VariableState[TPos, TIdx]], action: Var.Actions
+    ) -> list[NamedClause]:
+        clauses: list[NamedClause] = []
+
+        for c in state.pos_range():
+            for idx in state.idx_range():
+                var = state(c, idx, action.t - 1)
+                var_prime = var.rotate(action.face, action.direction, action.depth)
+
+                clauses.append(
+                    (
+                        f"Transition {state.__name__}, case_cube {c}, {action.face}, {action.direction}, depth {action.depth}, temps {action.t}, clause 1",
+                        [var_prime, -var, -action],
+                    )
+                )
+                clauses.append(
+                    (
+                        f"Transition {state.__name__}, case_cube {c}, {action.face}, {action.direction}, depth {action.depth}, temps {action.t}, clause 2",
+                        [-var_prime, var, -action],
+                    )
+                )
+
+        return clauses
+
+    def generate_transitions_clauses(
+        self, actions: set[tuple[Face, Direction, int]] | None = None
+    ) -> list[NamedClause]:
+        """
+        Génère les clauses pour les transitions.
+        """
+        if actions is None:
+            actions = {*product(Var.faces, Var.directions, Var.depths)}
+
+        clauses: list[NamedClause] = []
+
+        for t in range(1, Variable.t_max + 1):
             # Ajout des clauses pour forcer une action par étape
             clauses.append(
                 (
                     f"Action obligatoire à chaque étape, temps {t}",
-                    [Var.a(f, d, t) for (f, d) in product(Var.faces, Var.directions)],
+                    [Var.Actions(f, d, depth, t) for f, d, depth in actions],
                 )
             )
 
-            for f, d in product(Var.faces, Var.directions):
-                for f_prime, d_prime in product(Var.faces, Var.directions):
-                    if (f, d) < (f_prime, d_prime):
+            for f, d, depth in actions:
+                action = Var.Actions(f, d, depth, t)
+
+                for f_prime, d_prime, depth_prime in actions:
+                    if (f, d, depth) < (f_prime, d_prime, depth_prime):
                         clauses.append(
                             (
                                 f"Interdiction de rotations multiples, temps {t}, face {f}, {f_prime} et direction {d}, {d_prime}",
-                                [-Var.a(f, d, t), -Var.a(f_prime, d_prime, t)],
+                                [
+                                    -action,
+                                    -Var.Actions(f_prime, d_prime, depth_prime, t),
+                                ],
                             )
                         )
 
-                for c in cube_pos:
-                    c_prime = Var.rotate_x(f, d, c)
-                    action = Var.a(f, d, t)
-
-                    # Transitions des positions
-                    for idx in cube_pos:
-                        x_prime = Var.x(c_prime, idx, t)
-                        x = Var.x(c, idx, t - 1)
-
-                        clauses.append(
-                            (
-                                f"Transition des positions, id_cube {idx}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 1",
-                                [x_prime, -x, -action],
-                            )
-                        )
-
-                        clauses.append(
-                            (
-                                f"Transition des positions, id_cube {idx}, case_cube {c}, face {f},  direction {d}, temps {t}, clause 2",
-                                [-x_prime, x, -action],
-                            )
-                        )
-
-                for c in cube_pos:
-                    c_prime = Var.rotate_x(f, d, c)
-                    action = Var.a(f, d, t)
-                    # Transitions des rotations
-                    for o in orientations:
-                        theta_prime = Var.theta(
-                            c_prime, Var.rotate_theta(f, d, c, o), t
-                        )
-                        theta = Var.theta(c, o, t - 1)
-
-                        clauses.append(
-                            (
-                                f"Transition des orientations, case_cube {c}, orientation {o}, face {f},  direction {d}, temps {t}, clause 1",
-                                [theta_prime, -theta, -action],
-                            )
-                        )
-
-                        clauses.append(
-                            (
-                                f"Transition des orientations, case_cube {c}, orientation {o}, face {f},  direction {d}, temps {t}, clause 2",
-                                [-theta_prime, theta, -action],
-                            )
-                        )
+                clauses += self.generate_clauses_transition(Var.Corners.x, action)
+                clauses += self.generate_clauses_transition(Var.Corners.theta, action)
+                clauses += self.generate_clauses_transition(Var.Edges.x, action)
+                clauses += self.generate_clauses_transition(Var.Edges.theta, action)
+                clauses += self.generate_clauses_transition(Var.Centers.x, action)
 
         return clauses
+
+    def upload_to_drive(
+        self,
+        clauses: list[Clause],
+        folder_id="16CfwqqPviDAp7ECScSmXLh94nxyET5Am",
+    ):
+        creds = service_account.Credentials.from_service_account_file(
+            "credentials.json", scopes=["https://www.googleapis.com/auth/drive.file"]
+        )
+        service = build("drive", "v3", credentials=creds)
+
+        cnf_file = io.BytesIO(self.generate_str(clauses).encode("utf-8"))
+
+        file_metadata = {"name": self.cnf_filename, "parents": [folder_id]}
+        media = MediaIoBaseUpload(cnf_file, mimetype="text/plain")
+
+        file = (
+            service.files()
+            .create(body=file_metadata, media_body=media, fields="id")
+            .execute()
+        )
+        print(
+            f"File uploaded successfully! File ID: {file.get('id')} ({self.cnf_filename})"
+        )
+
+    def generate_str(self, clauses: list[Clause]) -> str:
+        """
+        Génère une chaîne de caractères pour les clauses.
+        """
+        s = f"p cnf {Var.n_vars()} {len(clauses)}\n"
+        for clause in clauses:
+            s += " ".join(map(lambda var: var.id_repr(), clause)) + " 0\n"
+        return s
 
     def generate_cnf_file(self, clauses: list[Clause]) -> None:
         """
@@ -263,15 +170,10 @@ class RubiksCubeSolver:
         """
         # Écriture du fichier CNF
         with open(self.cnf_filename, "w") as f:
-            f.write(f"p cnf {Var.n_vars()} {len(clauses)}\n")
-            for clause in clauses:
-                f.write(" ".join(map(str, clause)) + " 0\n")
+            f.write(self.generate_str(clauses))
 
     def verify(
-        self,
-        vars: dict[int, bool],
-        clauses: list[NamedClause],
-        default_var_value: bool = False,
+        self, vars: list[Variable], clauses: list[NamedClause]
     ) -> tuple[bool, list[NamedClause]]:
         """
         Vérifie si les variables sont satisfaisantes pour les clauses.
@@ -279,130 +181,170 @@ class RubiksCubeSolver:
         Retourne un tuple (booléen, liste de clauses insatisfaites).
         """
         unsat_clauses: list[NamedClause] = []
+        var_map = {var.id: var.is_true for var in vars}
 
         for clause in clauses:
-            if not any(
-                vars.get(abs(var), default_var_value) == (var > 0) for var in clause[1]
-            ):
+            if not any(var_map.get(var.id, False) == var.is_true for var in clause[1]):
                 unsat_clauses.append(clause)
 
         return len(unsat_clauses) == 0, unsat_clauses
 
-    def solve(self, clauses: list[Clause]) -> tuple[bool, list[str], list[Action]]:
+    def solve(
+        self, clauses: list[Clause]
+    ) -> tuple[bool, list[Variable], list[Var.Actions]]:
         """
         Exécute Gophersat et récupère le résultat.
         """
         self.generate_cnf_file(clauses)
 
         result = subprocess.run(
-            ["gophersat", "--verbose", "rubiks_cube.cnf"],
+            ["gophersat", "--verbose", self.cnf_filename],
             capture_output=True,
             text=True,
         )
 
         return self.parse_output(result.stdout)
 
-    def parse_output(self, output: str) -> tuple[bool, list[str], list[Action]]:
+    def parse_output(
+        self, output: str
+    ) -> tuple[bool, list[Variable], list[Var.Actions]]:
         """
         Analyse la sortie de Gophersat et retourne les actions et positions trouvées.
         """
         if "UNSATISFIABLE" in output:
             return False, [], []
 
-        variables: list[int] = []
+        variables: list[Variable] = []
 
         for line in output.splitlines():
             if line.startswith("v "):  # Ligne contenant les variables SAT
                 values = map(int, line[2:].strip().split())
-                variables.extend([v for v in values if v > 0])
+                variables.extend([Var.from_int(v) for v in values if v > 0])
 
-        actions: list[tuple[Action, int]] = [
-            Var.get_action_from(a) for a in variables if Var.is_action(a)
+        actions: list[Var.Actions] = [
+            a for a in variables if isinstance(a, Var.Actions)
         ]
 
         return (
             True,
-            [Var.decode(v) for v in variables],
-            [action for action, t in sorted(actions, key=lambda a: a[1])],
+            variables,
+            [action for action in sorted(actions, key=lambda a: a.t)],
         )
 
-    def generate_initial_clauses(self) -> list[NamedClause]:
+    def remove_name(self, clauses: list[NamedClause]) -> list[Clause]:
+        return [clause[1] for clause in clauses]
+
+    def generate_clauses(
+        self, cube: RubiksCube, steps: list[Step.Step] | None = None
+    ) -> list[NamedClause]:
+        if steps is None:
+            steps = [Step.Corners() + Step.Edges() + Step.Centers()]
+
         clauses: list[NamedClause] = []
+        clauses += self.generate_initial_clauses(cube)
+        clauses += self.generate_transitions_clauses(steps[-1].actions)
 
-        for cube_pos in range(8):
-            cube_pos = cast(CornerPos, cube_pos)
-
-            x, theta = self.rubiks_cube.get_vars_from_corner_pos(cube_pos)
-
-            for cube_idx in range(8):
-                cube_idx = cast(CornerPos, cube_idx)
-
-                sign = 1 if cube_idx == x else -1
-                clauses.append(
-                    ("Initial state position", [sign * Var.x(cube_pos, cube_idx, 0)])
-                )
-
-            for orientation in range(3):
-                orientation = cast(Orientation, orientation)
-
-                sign = 1 if orientation == theta else -1
-                clauses.append(
-                    (
-                        "Initial state orientation",
-                        [sign * Var.theta(cube_pos, orientation, 0)],
-                    )
-                )
+        for step in steps:
+            clauses += step.generate_final_clauses()
 
         return clauses
 
+    def remove_duplicates(self, actions: list[Var.Actions]) -> list[Var.Actions]:
+        new_actions: list[Var.Actions] = []
+
+        for action in actions:
+            if len(new_actions) == 0:
+                new_actions.append(
+                    Var.Actions(
+                        action.face,
+                        action.direction,
+                        action.depth,
+                        len(new_actions) + 1,
+                    )
+                )
+                continue
+
+            prev_action = new_actions[-1]
+
+            if action.face == prev_action.face and action.depth == prev_action.depth:
+                new_direction = action.direction + prev_action.direction
+
+                if new_direction == Direction.NONE:
+                    new_actions.pop()
+
+                else:
+                    new_actions[-1] = Var.Actions(
+                        action.face, new_direction, action.depth, len(new_actions) + 1
+                    )
+            else:
+                new_actions.append(
+                    Var.Actions(
+                        action.face,
+                        action.direction,
+                        action.depth,
+                        len(new_actions) + 1,
+                    )
+                )
+
+        return new_actions
+
     def run(
-        self, true_instance: dict[int, bool] | None = None
-    ) -> tuple[bool, list[Action]]:
+        self, t_max: int, cube: RubiksCube, steps: list[Step.Step] | None = None
+    ) -> tuple[bool, list[Var.Actions]]:
         """
         Gère tout le processus : génération du CNF, exécution du solveur et extraction du résultat.
 
         true_instance : dictionnaire des variables SAT à forcer à True (Pour debug uniquement).
         """
-        Variable.cube_size = 2
+        if steps is None:
+            steps = [Step.Corners() + Step.Edges() + Step.Centers()]
 
-        clauses = self.generate_clauses()
-        sat, result, actions = self.solve([clauses[1] for clauses in clauses])
+        last_t_max = Variable.t_max
 
-        if true_instance is not None and not sat:
-            sat, unsat_clauses = self.verify(true_instance, clauses)
+        Variable.t_max = t_max
 
-            for unsat_clause in unsat_clauses[-8:]:
-                print(unsat_clause[0])
-                print([Var.decode(v) for v in unsat_clause[1]])
-                print()
+        clauses = self.generate_clauses(cube, steps)
+        sat, variables, actions = self.solve([clauses[1] for clauses in clauses])
 
-        for line in result:
-            print(line)
-
+        Variable.t_max = last_t_max
         return sat, actions
 
-    def find_optimal(
-        self, t_min: int = -1, t_max: int = 11
-    ) -> tuple[bool, list[Action]]:
+    def find_optimal(self, steps: list[Step.Step] | None = None) -> list[Var.Actions]:
         """
         Trouve la solution optimale.
         """
 
-        sat: bool = False
-        actions: list[Action] = []
+        if steps is None:
+            steps = [Step.Corners() + Step.Edges() + Step.Centers()]
 
-        while t_min < t_max - 1:
-            t = (t_min + t_max) // 2
+        cube = self.rubiks_cube.copy()
+        actions: list[Var.Actions] = []
 
-            RubiksCubeSolver.t_max = t
-            sat_, actions_ = self.run()
+        for step_idx in tqdm(range(len(steps))):
+            step = steps[step_idx]
+            sat_found: bool = False
+            unsat_found: bool = False
+            t = step.t_median()
 
-            if sat_:
-                t_max = t
-                sat = True
-                actions = actions_
+            actions_this_step: list[Var.Actions] = []
 
-            else:
-                t_min = t
+            while not sat_found or not unsat_found:
+                sat, actions_ = self.run(t, cube, steps[: step_idx + 1])
 
-        return sat, actions
+                print(f"Step {step}, t = {t}, sat = {sat}")
+
+                if sat:
+                    sat_found = True
+                    actions_this_step = actions_
+                    t -= 1
+
+                else:
+                    unsat_found = True
+                    t += 1
+
+            for action in actions_this_step:
+                cube.rotate(action.face, action.direction, action.depth)
+
+            actions += actions_this_step
+
+        return self.remove_duplicates(actions)

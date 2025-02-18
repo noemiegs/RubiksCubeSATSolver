@@ -1,26 +1,36 @@
 from rubiks_cube import RubiksCube
-from utils import Size
 from rubiks_cube_solver import RubiksCubeSolver
+import step as Step
 from variables import Var
+from variables_abc import Variable
 
 
-def main(size: Size = (2, 2, 2)):
-    rubiks_cube = RubiksCube(size)
-    rubiks_cube.shuffle(faces=Var.faces)
+def main(size: int = 3):
+    Variable.cube_size = size
+    Var.depths = list(range(Variable.cube_size - 1))
 
-    solver = RubiksCubeSolver(rubiks_cube)
-    sat, actions = solver.run()
+    rubiks_cube = RubiksCube((size, size, size))
+    rubiks_cube.shuffle(replace_origin=True)
 
-    print("SATISFIABLE" if sat else "UNSATISFIABLE")
+    solver = RubiksCubeSolver(rubiks_cube, "rubiks_cube.cnf")
+    actions = solver.find_optimal(
+        steps=[
+            Step.Corners(),
+            Step.EdgeOrientation() + Step.Centers(),
+            Step.EdgePostionOnCircle(),
+            Step.FirstEdgePosition()
+            + Step.SecondEdgePosition()
+            + Step.ThirdEdgePosition(),
+        ],
+    )
 
-    if sat:
-        print(f"Solved in {len(actions)} moves")
+    print(f"Solved in {len(actions)} moves")
+    moves = [
+        RubiksCube.move_to_str(action.face, action.direction, action.depth)
+        for action in actions
+    ]
 
-        moves = [
-            RubiksCube.move_to_str(face, direction, depth)
-            for face, direction, depth in actions
-        ]
-        rubiks_cube.animate(RubiksCube.parse_moves(moves), speed=2)
+    rubiks_cube.animate(RubiksCube.parse_moves(moves), speed=5, recording=True)
 
 
 if __name__ == "__main__":

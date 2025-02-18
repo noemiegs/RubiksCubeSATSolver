@@ -1,6 +1,5 @@
 from rubiks_cube import RubiksCube
-from rubiks_cube_solver_3_3_3 import RubiksCubeSolver
-import step as Step
+from rubiks_cube_solver import RubiksCubeSolver
 from variables import Var
 from variables_abc import Variable
 
@@ -42,23 +41,15 @@ def update_true_instance(cube: RubiksCube, true_instance: list[Variable], t: int
 
 
 def main(size: int = 3):
+    Variable.t_max = 11
     Variable.cube_size = size
     Var.depths = list(range(Variable.cube_size - 1))
 
     rubiks_cube = RubiksCube((size, size, size))
-    moves = rubiks_cube.shuffle(faces=Var.faces)
+    moves = rubiks_cube.shuffle(Variable.t_max)
 
     solver = RubiksCubeSolver(rubiks_cube, "rubiks_cube.cnf")
-    sat, actions = solver.find_optimal(
-        steps=[
-            Step.Corners(),
-            Step.EdgeOrientation() + Step.Centers(),
-            Step.EdgePostionOnCircle(),
-            Step.FirstEdgePosition()
-            + Step.SecondEdgePosition()
-            + Step.ThirdEdgePosition(),
-        ],
-    )
+    sat, actions = solver.run(Variable.t_max, rubiks_cube)
 
     print("SATISFIABLE" if sat else "UNSATISFIABLE")
 
