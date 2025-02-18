@@ -261,21 +261,21 @@ class Var:
             self.face = face
             self.direction = direction
             self.depth = depth
-            self.t = t
 
-            super().__init__(is_true)
+            super().__init__(t, is_true)
 
         def compute_id(self) -> int:
             return (
-                Var.Corners.n_vars()
-                + Var.Edges.n_vars()
-                + Var.Centers.n_vars()
+                self.offset()
                 + Var.directions.index(self.direction)
                 + Var.faces.index(self.face) * 3
                 + self.depth * 9
                 + self.t * 9 * (Variable.cube_size - 1)
-                + 1
             )
+
+        @classmethod
+        def offset(cls) -> int:
+            return 1 + Var.Corners.n_vars() + Var.Edges.n_vars() + Var.Centers.n_vars()
 
         @classmethod
         def n_vars(cls) -> int:
@@ -283,7 +283,7 @@ class Var:
 
         @classmethod
         def from_int(cls, var: int) -> "Var.Actions":
-            var -= 1 + Var.Corners.n_vars() + Var.Edges.n_vars() + Var.Centers.n_vars()
+            var -= cls.offset()
 
             return Var.Actions(
                 Var.faces[(var // 3) % 3],
