@@ -61,7 +61,7 @@ $$s_{i, j} :
 
 On notera $c_x$, $c_y$ et $c_z$ les coordonnées du cube $c$
 
-Enfin, on notera $g$ la fonction de reconstruction de $c$ à partir de ces coordonnées : $g(c_x, c_y, c_z) = c_x + 2 c_y + 4 c_z = c$
+Enfin, on notera $g$ la fonction permettant d'obtenir les coordonnées du cube $c$ : $g(c) = c_x, c_y, c_z$. Et son inverse $g^{-1}(c_x, c_y, c_z) = c$
 
 ## Fonctions rotations
 
@@ -72,21 +72,21 @@ Soit $c \in C$ et $o \in O$
 $$
 r_x(Right, Clockwise, c) =
 \begin{cases}
-    g(c_x, c_z, 1 - c_y) \ \ \text{si} \ \ c \in C_{Right} \\
+    g^{-1}(c_x, c_z, 1 - c_y) \ \ \text{si} \ \ c \in C_{Right} \\
     c \ \ \text{sinon} \\
 \end{cases}
 $$
 $$
 r_x(Bottom, Clockwise, c) =
 \begin{cases}
-    g(c_z, c_y, 1 - c_x) \ \ \text{si} \ \ c \in C_{Bottom} \\
+    g^{-1}(1 - c_z, c_y, c_x) \ \ \text{si} \ \ c \in C_{Bottom} \\
     c \ \ \text{sinon} \\
 \end{cases}
 $$
 $$
 r_x(Back, Clockwise, c) =
 \begin{cases}
-    g(c_y, 1 - c_x, c_z) \ \ \text{si} \ \ c \in C_{Back} \\
+    g^{-1}(c_y, 1 - c_x, c_z) \ \ \text{si} \ \ c \in C_{Back} \\
     c \ \ \text{sinon} \\
 \end{cases}
 $$

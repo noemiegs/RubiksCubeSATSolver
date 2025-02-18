@@ -19,7 +19,8 @@ class Variable(ABC):
     cube_size = 3
     t_max = 11
 
-    def __init__(self, is_true: bool = True) -> None:
+    def __init__(self, t: int, is_true: bool = True) -> None:
+        self.t = t
         self.id = self.compute_id()
         self.is_true = is_true
 
@@ -35,6 +36,10 @@ class Variable(ABC):
 
     @abstractmethod
     def compute_id(self) -> int: ...
+
+    @classmethod
+    @abstractmethod
+    def offset(cls) -> int: ...
 
     @classmethod
     @abstractmethod
@@ -104,17 +109,12 @@ class VariableState(Variable, Generic[TPos, TIdx], ABC):
     def __init__(self, pos: TPos, idx: TIdx, t: int, is_true: bool = True) -> None:
         self.pos: TPos = pos
         self.idx: TIdx = idx
-        self.t = t
 
-        super().__init__(is_true)
+        super().__init__(t, is_true)
 
     @classmethod
     @abstractmethod
     def parent(cls) -> type[VariableParent[TPos]]: ...
-
-    @classmethod
-    @abstractmethod
-    def offset(cls) -> int: ...
 
     @classmethod
     @abstractmethod
