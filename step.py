@@ -182,10 +182,12 @@ class FirstEdgePosition(Step):
     def __init__(self) -> None:
         super().__init__()
 
-        self.actions = {*product(Var.faces, [Direction.HALF_TURN], Var.depths)}
+        self.actions = {*product(Var.faces, [Direction.HALF_TURN], [0])} | {
+            *product(Var.faces, Var.directions, [1])
+        }
 
     def t_median(self) -> int:
-        return 12
+        return 8
 
     def generate_final_clauses(self) -> list[NamedClause]:
         clauses: list[NamedClause] = []
@@ -200,10 +202,12 @@ class SecondEdgePosition(Step):
     def __init__(self) -> None:
         super().__init__()
 
-        self.actions = {*product(Var.faces, [Direction.HALF_TURN], Var.depths)}
+        self.actions = {*product(Var.faces, [Direction.HALF_TURN], [0])} | {
+            *product(Var.faces, Var.directions, [1])
+        }
 
     def t_median(self) -> int:
-        return 13
+        return 8
 
     def generate_final_clauses(self) -> list[NamedClause]:
         clauses: list[NamedClause] = []
@@ -218,12 +222,12 @@ class ThirdEdgePosition(Step):
     def __init__(self) -> None:
         super().__init__()
 
-        self.actions = {*product(Var.faces, [Direction.HALF_TURN], Var.depths)} | {
-            (Face.BACK, Direction.CLOCKWISE, 0)
+        self.actions = {*product(Var.faces, [Direction.HALF_TURN], [0])} | {
+            *product(Var.faces, Var.directions, [1])
         }
 
     def t_median(self) -> int:
-        return 13
+        return 8
 
     def generate_final_clauses(self) -> list[NamedClause]:
         clauses: list[NamedClause] = []

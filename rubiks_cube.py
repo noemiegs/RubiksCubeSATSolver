@@ -215,7 +215,7 @@ class RubiksCube:
             Color.YELLOW: 5,
         }[color]
 
-    def _up_face_and_slice(self, face: Face, depth: int) -> tuple[Face, slice]:
+    def __up_face_and_slice(self, face: Face, depth: int) -> tuple[Face, slice]:
         return {
             Face.FRONT: (Face.TOP, np.s_[:, self.size[2] - 1 - depth]),
             Face.BACK: (Face.TOP, np.s_[::-1, depth]),
@@ -225,7 +225,7 @@ class RubiksCube:
             Face.BOTTOM: (Face.FRONT, np.s_[:, self.size[1] - 1 - depth]),
         }[face]
 
-    def _bottom_face_and_slice(self, face: Face, depth: int) -> tuple[Face, slice]:
+    def __bottom_face_and_slice(self, face: Face, depth: int) -> tuple[Face, slice]:
         return {
             Face.FRONT: (Face.BOTTOM, np.s_[::-1, depth]),
             Face.BACK: (Face.BOTTOM, np.s_[:, self.size[2] - 1 - depth]),
@@ -235,7 +235,7 @@ class RubiksCube:
             Face.BOTTOM: (Face.BACK, np.s_[:, self.size[1] - 1 - depth]),
         }[face]
 
-    def _left_face_and_slice(self, face: Face, depth: int) -> tuple[Face, slice]:
+    def __left_face_and_slice(self, face: Face, depth: int) -> tuple[Face, slice]:
         return {
             Face.FRONT: (Face.LEFT, np.s_[self.size[2] - 1 - depth, ::-1]),
             Face.BACK: (Face.RIGHT, np.s_[self.size[2] - 1 - depth, ::-1]),
@@ -245,7 +245,7 @@ class RubiksCube:
             Face.BOTTOM: (Face.LEFT, np.s_[:, self.size[1] - 1 - depth]),
         }[face]
 
-    def _right_face_and_slice(self, face: Face, depth: int) -> tuple[Face, slice]:
+    def __right_face_and_slice(self, face: Face, depth: int) -> tuple[Face, slice]:
         return {
             Face.FRONT: (Face.RIGHT, np.s_[depth, :]),
             Face.BACK: (Face.LEFT, np.s_[depth, :]),
@@ -255,14 +255,14 @@ class RubiksCube:
             Face.BOTTOM: (Face.RIGHT, np.s_[:, self.size[1] - 1 - depth]),
         }[face]
 
-    def _rotate_clockwise(self, face: Face, depth: int) -> None:
+    def __rotate_clockwise(self, face: Face, depth: int) -> None:
         if depth == 0:
             self.faces[face] = np.rot90(self.faces[face], k=1)
 
-        up_face, up_slice = self._up_face_and_slice(face, depth)
-        bottom_face, bottom_slice = self._bottom_face_and_slice(face, depth)
-        left_face, left_slice = self._left_face_and_slice(face, depth)
-        right_face, right_slice = self._right_face_and_slice(face, depth)
+        up_face, up_slice = self.__up_face_and_slice(face, depth)
+        bottom_face, bottom_slice = self.__bottom_face_and_slice(face, depth)
+        left_face, left_slice = self.__left_face_and_slice(face, depth)
+        right_face, right_slice = self.__right_face_and_slice(face, depth)
 
         up_color = self.faces[up_face][up_slice].copy()
         self.faces[up_face][up_slice] = self.faces[left_face][left_slice]
@@ -270,14 +270,14 @@ class RubiksCube:
         self.faces[bottom_face][bottom_slice] = self.faces[right_face][right_slice]
         self.faces[right_face][right_slice] = up_color
 
-    def _rotate_half_turn(self, face: Face, depth: int) -> None:
+    def __rotate_half_turn(self, face: Face, depth: int) -> None:
         if depth == 0:
             self.faces[face] = self.faces[face][::-1, ::-1]
 
-        up_face, up_slice = self._up_face_and_slice(face, depth)
-        bottom_face, bottom_slice = self._bottom_face_and_slice(face, depth)
-        left_face, left_slice = self._left_face_and_slice(face, depth)
-        right_face, right_slice = self._right_face_and_slice(face, depth)
+        up_face, up_slice = self.__up_face_and_slice(face, depth)
+        bottom_face, bottom_slice = self.__bottom_face_and_slice(face, depth)
+        left_face, left_slice = self.__left_face_and_slice(face, depth)
+        right_face, right_slice = self.__right_face_and_slice(face, depth)
 
         up_color = self.faces[up_face][up_slice].copy()
         self.faces[up_face][up_slice] = self.faces[bottom_face][bottom_slice]
@@ -311,38 +311,98 @@ class RubiksCube:
         assert self.can_rotate(face, direction, depth), "Cannot rotate face"
 
         if direction == Direction.HALF_TURN:
-            self._rotate_half_turn(face, depth)
+            self.__rotate_half_turn(face, depth)
             return
 
         for _ in range(direction.value):
-            self._rotate_clockwise(face, depth)
+            self.__rotate_clockwise(face, depth)
 
-    def shuffle(
-        self,
-        n: int = 100,
-        faces: list[Face] = list(Face),
-        directions: list[Direction] = Direction.not_none(),
-        depths: list[int] | None = None,
-    ) -> list[str]:
-        if depths is None:
-            depths = list(range(max(self.size)))
+    def shuffle(self, n: int = 100, replace_origin: bool = False) -> list[str]:
+        faces = list(Face)
+        directions = Direction.not_none()
+        depths = list(range(max(self.size)))
 
         moves_str: list[str] = []
+        last_face: Face | None = None
+        last_depth: int | None = None
 
         for _ in range(n):
             face = random.choice(faces)
             direction = random.choice(directions)
             depth = random.choice(depths)
-            while not self.can_rotate(face, direction, depth):
+
+            while not self.can_rotate(face, direction, depth) or (
+                face == last_face and depth == last_depth
+            ):
                 face = random.choice(faces)
                 direction = random.choice(directions)
                 depth = random.choice(depths)
 
+            last_face = face
+            last_depth = depth
             self.rotate(face, direction, depth)
 
             moves_str.append(RubiksCube.move_to_str(face, direction, depth))
 
+        if replace_origin:
+            self.replace_origin()
+
         return moves_str
+
+    def rotate_whole_cube(self, face: Face, direction: Direction) -> None:
+        self.rotate(face.opposite(), direction.opposite(), 0)
+        for i in range(self.size[0] - 1):
+            self.rotate(face, direction, i)
+
+    def __origin(self) -> tuple[CornerPos, CornerOrientation]:
+        for pos in Var.Corners.pos_range():
+            idx, o = self.get_vars_from_corner_pos(pos)
+            if idx == 0:
+                return pos, o
+        raise ValueError("Origin not found")
+
+    def replace_origin(self) -> None:
+        pos, o = self.__origin()
+        if pos == 0 and o == 0:
+            return
+
+        x, y, z = Var.Corners.g(pos)
+        x_placed = x == 0
+        y_placed = y == 0
+
+        if o == 0 and not x_placed:
+            self.rotate_whole_cube(Face.BOTTOM, Direction.HALF_TURN)
+        elif o == 1:
+            self.rotate_whole_cube(
+                Face.BOTTOM,
+                Direction.CLOCKWISE if x_placed else Direction.COUNTERCLOCKWISE,
+            )
+        elif o == 2:
+            self.rotate_whole_cube(
+                Face.RIGHT,
+                Direction.COUNTERCLOCKWISE if y_placed else Direction.CLOCKWISE,
+            )
+
+        pos, o = self.__origin()
+        assert o == 0, f"Origin not oriented correctly: {o}"
+
+        x, y, z = Var.Corners.g(pos)
+        x_placed = x == 0
+        y_placed = y == 0
+        z_placed = z == 0
+
+        assert z_placed, f"Origin not placed correctly: {pos}"
+
+        match (x_placed, y_placed):
+            case (False, False):
+                self.rotate_whole_cube(Face.FRONT, Direction.HALF_TURN)
+            case (True, False):
+                self.rotate_whole_cube(Face.FRONT, Direction.CLOCKWISE)
+            case (False, True):
+                self.rotate_whole_cube(Face.FRONT, Direction.COUNTERCLOCKWISE)
+
+        pos, o = self.__origin()
+        assert pos == 0, f"Origin not placed correctly: {pos}"
 
     @staticmethod
     def reverse_moves(moves: list[str]) -> list[str]:
@@ -379,7 +439,7 @@ class RubiksCube:
         for rotation in rotations:
             self.rotate(*self.parse_move(rotation))
 
-    def _draw_face(
+    def __draw_face(
         self,
         screen: pygame.surface.Surface,
         coords: list[tuple[float, float, float]],
@@ -397,7 +457,7 @@ class RubiksCube:
         pygame.draw.polygon(screen, color.to_rgb(), screen_positions)
         pygame.draw.polygon(screen, (0, 0, 0), screen_positions, 2)
 
-    def _draw(
+    def __draw(
         self,
         screen: pygame.surface.Surface,
         angle_x: float,
@@ -546,7 +606,7 @@ class RubiksCube:
         )
 
         for coords, color in faces_ordered:
-            self._draw_face(screen, coords, Color(color))
+            self.__draw_face(screen, coords, Color(color))
 
     def show(
         self,
@@ -621,7 +681,7 @@ class RubiksCube:
                     rotating_face = None
                     rotation_idx += 1
 
-            self._draw(
+            self.__draw(
                 screen, angle_x, angle_y, rotating_face, rotating_depth, rotating_angle
             )
 
