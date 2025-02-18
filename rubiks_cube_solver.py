@@ -23,6 +23,9 @@ class RubiksCubeSolver:
         self.rubiks_cube = rubiks_cube
         self.cnf_filename = cnf_filename
 
+        Variable.cube_size = rubiks_cube.size[0]
+        Var.depths = list(range(Variable.cube_size - 1))
+
     def generate_initial_clauses(
         self, cube: RubiksCube | None = None
     ) -> list[NamedClause]:

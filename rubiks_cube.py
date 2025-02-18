@@ -21,7 +21,6 @@ from utils import (
 )
 
 from variables import Var
-from variables_abc import Variable
 
 
 WIDTH, HEIGHT = 600, 600
@@ -91,7 +90,7 @@ class RubiksCube:
     def get_vars_from_edge_pos(self, pos: EdgePos) -> tuple[EdgePos, EdgeOrientation]:
         coords = list(Var.Edges.g(pos))
 
-        axis = np.argmax([0 < p < Variable.cube_size - 1 for p in coords]).item()
+        axis = np.argmax([0 < p < self.size[0] - 1 for p in coords]).item()
         for i in range(len(coords)):
             if i != axis:
                 coords[i] = -int(coords[i] != 0)
@@ -367,33 +366,28 @@ class RubiksCube:
             return
 
         x, y, z = Var.Corners.g(pos)
-        x_placed = x == 0
-        y_placed = y == 0
 
-        if o == 0 and not x_placed:
+        if o == 0 and z != 0:
             self.rotate_whole_cube(Face.BOTTOM, Direction.HALF_TURN)
         elif o == 1:
             self.rotate_whole_cube(
                 Face.BOTTOM,
-                Direction.CLOCKWISE if x_placed else Direction.COUNTERCLOCKWISE,
+                Direction.CLOCKWISE if x == 0 else Direction.COUNTERCLOCKWISE,
             )
         elif o == 2:
             self.rotate_whole_cube(
                 Face.RIGHT,
-                Direction.COUNTERCLOCKWISE if y_placed else Direction.CLOCKWISE,
+                Direction.COUNTERCLOCKWISE if y == 0 else Direction.CLOCKWISE,
             )
 
         pos, o = self.__origin()
         assert o == 0, f"Origin not oriented correctly: {o}"
 
         x, y, z = Var.Corners.g(pos)
-        x_placed = x == 0
-        y_placed = y == 0
-        z_placed = z == 0
 
-        assert z_placed, f"Origin not placed correctly: {pos}"
+        assert z == 0, f"Origin not placed correctly: {pos}"
 
-        match (x_placed, y_placed):
+        match (x == 0, y == 0):
             case (False, False):
                 self.rotate_whole_cube(Face.FRONT, Direction.HALF_TURN)
             case (True, False):

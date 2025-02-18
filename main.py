@@ -1,14 +1,8 @@
 from rubiks_cube import RubiksCube
 from rubiks_cube_solver import RubiksCubeSolver
 import step as Step
-from variables import Var
-from variables_abc import Variable
-
 
 def main(size: int = 3):
-    Variable.cube_size = size
-    Var.depths = list(range(Variable.cube_size - 1))
-
     rubiks_cube = RubiksCube((size, size, size))
     rubiks_cube.shuffle(replace_origin=True)
 
