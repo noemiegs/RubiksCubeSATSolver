@@ -238,8 +238,10 @@ class RubiksCubeSolver:
         return [clause[1] for clause in clauses]
 
     def generate_clauses(
-        self, cube: RubiksCube, steps: list[Step.Step] | None = None
+        self, cube: RubiksCube, t_max: int, steps: list[Step.Step] | None = None
     ) -> list[NamedClause]:
+        Variable.t_max = t_max
+
         if steps is None:
             steps = [Step.Corners() + Step.Edges() + Step.Centers()]
 
@@ -302,14 +304,9 @@ class RubiksCubeSolver:
         if steps is None:
             steps = [Step.Corners() + Step.Edges() + Step.Centers()]
 
-        last_t_max = Variable.t_max
-
-        Variable.t_max = t_max
-
-        clauses = self.generate_clauses(cube, steps)
+        clauses = self.generate_clauses(cube, t_max, steps)
         sat, variables, actions = self.solve([clauses[1] for clauses in clauses])
 
-        Variable.t_max = last_t_max
         return sat, actions
 
     def find_optimal(self, steps: list[Step.Step] | None = None) -> list[Var.Actions]:
@@ -337,8 +334,11 @@ class RubiksCubeSolver:
                 print(f"Step {step}, t = {t}, sat = {sat}")
 
                 if sat:
-                    sat_found = True
                     actions_this_step = actions_
+                    if t == 0:
+                        break
+                    
+                    sat_found = True
                     t -= 1
 
                 else:

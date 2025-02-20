@@ -4,7 +4,9 @@ from typing import Literal
 
 CornerPos = Literal[0, 1, 2, 3, 4, 5, 6, 7]
 EdgePos = int
+EdgeIdx = Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 CenterPos = int
+CenterIdx = Literal[0, 1, 2, 3, 4, 5]
 CornerOrientation = Literal[0, 1, 2]
 EdgeOrientation = Literal[0, 1]
 Size = tuple[int, int, int]

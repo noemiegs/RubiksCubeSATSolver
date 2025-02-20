@@ -9,9 +9,11 @@ from math import cos, sin, radians
 from typing import cast
 from colorama import Fore, Style
 from utils import (
+    CenterIdx,
     CenterPos,
     Color,
     Direction,
+    EdgeIdx,
     EdgeOrientation,
     Face,
     Size,
@@ -21,6 +23,7 @@ from utils import (
 )
 
 from variables import Var
+from variables_abc import Variable
 
 
 WIDTH, HEIGHT = 600, 600
@@ -87,7 +90,7 @@ class RubiksCube:
 
         return idx, orientation
 
-    def get_vars_from_edge_pos(self, pos: EdgePos) -> tuple[EdgePos, EdgeOrientation]:
+    def get_vars_from_edge_pos(self, pos: EdgePos) -> tuple[EdgeIdx, EdgeOrientation]:
         coords = list(Var.Edges.g(pos))
 
         axis = np.argmax([0 < p < self.size[0] - 1 for p in coords]).item()
@@ -163,56 +166,47 @@ class RubiksCube:
         idx = None
         # X Axis
         if Color.BLUE not in colors and Color.GREEN not in colors:
-            idx = Var.Edges.g_inv(
-                1,  # TODO : Change it for n*n*n cubes
-                int(Color.ORANGE in colors) * (self.size[Y] - 1),
-                int(Color.YELLOW in colors) * (self.size[Z] - 1),
-            )
+            idx = int(Color.ORANGE in colors) + 2 * int(Color.YELLOW in colors)
         # Y Axis
         if Color.RED not in colors and Color.ORANGE not in colors:
-            idx = Var.Edges.g_inv(
-                int(Color.GREEN in colors) * (self.size[X] - 1),
-                1,
-                int(Color.YELLOW in colors) * (self.size[Z] - 1),
-            )
+            idx = 4 + int(Color.GREEN in colors) + 2 * int(Color.YELLOW in colors)
         # Z Axis
         if Color.WHITE not in colors and Color.YELLOW not in colors:
-            idx = Var.Edges.g_inv(
-                int(Color.GREEN in colors) * (self.size[X] - 1),
-                int(Color.ORANGE in colors) * (self.size[Y] - 1),
-                1,
-            )
+            idx = 8 + int(Color.GREEN in colors) + 2 * int(Color.ORANGE in colors)
+
         assert idx is not None, f"Invalid edge colors: {colors}"
 
-        return idx, orientation
+        return cast(EdgeIdx, idx), orientation
 
-    def get_vars_from_center_pos(self, pos: CenterPos) -> CenterPos:
+    def get_vars_from_center_pos(self, pos: CenterPos) -> CenterIdx:
         x, y, z = Var.Centers.g(pos)
 
-        # TODO : Change it for n*n*n cubes
         color = None
         if x == 0:
-            color = Color(self.faces[Face.LEFT][1, 1])
+            color = Color(self.faces[Face.LEFT][-z - 1, y])
         if x == self.size[X] - 1:
-            color = Color(self.faces[Face.RIGHT][1, 1])
+            color = Color(self.faces[Face.RIGHT][z, y])
         if y == 0:
-            color = Color(self.faces[Face.TOP][1, 1])
+            color = Color(self.faces[Face.TOP][x, -z - 1])
         if y == self.size[Y] - 1:
-            color = Color(self.faces[Face.BOTTOM][1, 1])
+            color = Color(self.faces[Face.BOTTOM][x, z])
         if z == 0:
-            color = Color(self.faces[Face.FRONT][1, 1])
+            color = Color(self.faces[Face.FRONT][x, y])
         if z == self.size[Z] - 1:
-            color = Color(self.faces[Face.BACK][1, 1])
+            color = Color(self.faces[Face.BACK][-x - 1, y])
         assert color is not None, f"Invalid center position: {pos}"
 
-        return {
-            Color.BLUE: 0,
-            Color.GREEN: 1,
-            Color.RED: 2,
-            Color.ORANGE: 3,
-            Color.WHITE: 4,
-            Color.YELLOW: 5,
-        }[color]
+        return cast(
+            CenterIdx,
+            {
+                Color.BLUE: 0,
+                Color.GREEN: 1,
+                Color.RED: 2,
+                Color.ORANGE: 3,
+                Color.WHITE: 4,
+                Color.YELLOW: 5,
+            }[color],
+        )
 
     def __up_face_and_slice(self, face: Face, depth: int) -> tuple[Face, slice]:
         return {
@@ -361,6 +355,8 @@ class RubiksCube:
         raise ValueError("Origin not found")
 
     def replace_origin(self) -> None:
+        Variable.cube_size = self.size[0]
+
         pos, o = self.__origin()
         if pos == 0 and o == 0:
             return

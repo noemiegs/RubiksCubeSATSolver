@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from math import ceil, log2
 from typing import Generic, Iterable, TypeVar, cast
 
 import numpy as np
@@ -16,8 +15,8 @@ from utils import (
 
 
 class Variable(ABC):
-    cube_size = 3
-    t_max = 11
+    cube_size: int
+    t_max: int
 
     def __init__(self, t: int, is_true: bool = True) -> None:
         self.t = t
@@ -208,19 +207,15 @@ class VariableState(Variable, Generic[TPos, TIdx], ABC):
     ) -> "VariableState[TPos, TIdx]": ...
 
 
-class VariableX(VariableState[TPos, TPos], Generic[TPos]):
-    def rotate(self, face: Face, direction: Direction, depth: int) -> "VariableX[TPos]":
+class VariableX(VariableState[TPos, TIdx], Generic[TPos, TIdx]):
+    def rotate(
+        self, face: Face, direction: Direction, depth: int
+    ) -> "VariableX[TPos, TIdx]":
         return self.__class__(
             self.rotate_cube(face, direction, depth),
             self.idx,
             self.t + 1,
         )
-
-    @classmethod
-    def n_idx(cls) -> int:
-        if cls.n_pos() == 0:
-            return 0
-        return ceil(log2(cls.n_pos()))
 
     @classmethod
     def encode(cls, decoded_idx: int) -> tuple[int, ...]:
@@ -231,12 +226,16 @@ class VariableX(VariableState[TPos, TPos], Generic[TPos]):
 
     @classmethod
     def from_decoded(
-        cls, pos: TPos, idx_decoded: int, t: int
+        cls, pos: TPos, idx_decoded: TIdx, t: int
     ) -> tuple["VariableState[TPos, TIdx]", ...]:
         return tuple(
-            sign * cls(pos, cast(TPos, idx), t)
+            sign * cls(pos, cast(TIdx, idx), t)
             for idx, sign in enumerate(cls.encode(idx_decoded))
         )  # type: ignore
+
+    @classmethod
+    @abstractmethod
+    def pos_to_idx(cls, pos: TPos) -> TIdx: ...
 
 
 class VariableTheta(VariableState[TPos, TIdx], Generic[TPos, TIdx]): ...
