@@ -41,15 +41,16 @@ def update_true_instance(cube: RubiksCube, true_instance: list[Variable], t: int
 
 
 def main(size: int = 3):
-    Variable.t_max = 11
+    t_max = 11
+
     Variable.cube_size = size
     Var.depths = list(range(Variable.cube_size - 1))
 
     rubiks_cube = RubiksCube((size, size, size))
-    moves = rubiks_cube.shuffle(Variable.t_max)
+    moves = rubiks_cube.shuffle(t_max)
 
     solver = RubiksCubeSolver(rubiks_cube, "rubiks_cube.cnf")
-    sat, actions = solver.run(Variable.t_max, rubiks_cube)
+    sat, actions = solver.run(t_max, rubiks_cube)
 
     print("SATISFIABLE" if sat else "UNSATISFIABLE")
 
@@ -65,7 +66,7 @@ def main(size: int = 3):
         true_instance = generate_true_instance(
             rubiks_cube, RubiksCube.reverse_moves(moves)
         )
-        clauses = solver.generate_clauses(rubiks_cube)
+        clauses = solver.generate_clauses(rubiks_cube, t_max)
 
         _, unsatclauses = solver.verify(true_instance, clauses)
         for clause in unsatclauses:

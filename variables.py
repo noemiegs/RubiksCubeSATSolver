@@ -2,7 +2,9 @@ from typing import cast
 import numpy as np
 
 from utils import (
+    CenterIdx,
     Direction,
+    EdgeIdx,
     EdgeOrientation,
     Face,
     CornerPos,
@@ -19,7 +21,7 @@ class Var:
     depths: list[int] = []
 
     class Corners(VariableParent[CornerPos]):
-        class x(VariableX[CornerPos]):
+        class x(VariableX[CornerPos, CornerPos]):
             @classmethod
             def offset(cls) -> int:
                 return 1
@@ -27,6 +29,14 @@ class Var:
             @classmethod
             def parent(cls) -> type["Var.Corners"]:
                 return Var.Corners
+
+            @classmethod
+            def n_idx(cls) -> int:
+                return 3
+
+            @classmethod
+            def pos_to_idx(cls, pos: CornerPos) -> CornerPos:
+                return pos
 
         class theta(VariableTheta[CornerPos, CornerOrientation]):
             @classmethod
@@ -101,7 +111,7 @@ class Var:
             return 8
 
     class Edges(VariableParent[EdgePos]):
-        class x(VariableX[EdgePos]):
+        class x(VariableX[EdgePos, EdgeIdx]):
             @classmethod
             def offset(cls) -> int:
                 return 1 + Var.Corners.n_vars()
@@ -109,6 +119,23 @@ class Var:
             @classmethod
             def parent(cls) -> type["Var.Edges"]:
                 return Var.Edges
+
+            @classmethod
+            def n_idx(cls) -> int:
+                if Variable.cube_size <= 2:
+                    return 0
+                return 4
+
+            @classmethod
+            def pos_to_idx(cls, pos: EdgePos) -> EdgeIdx:
+                x, y, z = Var.Edges.g(pos)
+                axis = np.argmax(
+                    [0 < p < Variable.cube_size - 1 for p in [x, y, z]]
+                ).item()
+                other_coords = [
+                    0 if p == 0 else 1 for i, p in enumerate([x, y, z]) if i != axis
+                ]
+                return cast(EdgeIdx, 4 * axis + 2 * other_coords[1] + other_coords[0])
 
         class theta(VariableTheta[EdgePos, EdgeOrientation]):
             @classmethod
@@ -181,7 +208,7 @@ class Var:
             return 12 * (Variable.cube_size - 2)
 
     class Centers(VariableParent[CenterPos]):
-        class x(VariableX[CenterPos]):
+        class x(VariableX[CenterPos, CenterIdx]):
             @classmethod
             def offset(cls) -> int:
                 return 1 + Var.Corners.n_vars() + Var.Edges.n_vars()
@@ -189,6 +216,22 @@ class Var:
             @classmethod
             def parent(cls) -> type["Var.Centers"]:
                 return Var.Centers
+
+            @classmethod
+            def n_idx(cls) -> int:
+                if Variable.cube_size <= 2:
+                    return 0
+                return 3
+
+            @classmethod
+            def pos_to_idx(cls, pos: CenterPos) -> CenterIdx:
+                x, y, z = Var.Centers.g(pos)
+                axis = np.argmax(
+                    [p == 0 or p == Variable.cube_size - 1 for p in [x, y, z]]
+                ).item()
+                axis_pos = 0 if [x, y, z][axis] == 0 else 1
+
+                return cast(CenterIdx, 2 * axis + axis_pos)
 
         @classmethod
         def n_vars(cls) -> int:
