@@ -12,7 +12,14 @@ from utils import (
     CenterPos,
     CornerOrientation,
 )
-from variables_abc import Variable, VariableParent, VariableX, VariableTheta
+from variables_abc import (
+    Variable,
+    VariableParent,
+    VariableX,
+    VariableTheta,
+    rotate_cube,
+    will_rotate,
+)
 
 
 class Var:
@@ -57,10 +64,14 @@ class Var:
                 direction: Direction,
                 depth: int,
             ) -> "Var.Corners.theta":
-                if not self.will_rotate(face, depth):
+                c_x, c_y, c_z = self.g(self.pos)
+
+                if not will_rotate(c_x, c_y, c_z, face, depth):
                     return Var.Corners.theta(self.pos, self.idx, self.t + 1)
 
-                new_pos = self.rotate_cube(face, direction, depth)
+                new_pos = self.g_inv(
+                    *rotate_cube(c_x, c_y, c_z, face, direction, depth)
+                )
 
                 if direction == Direction.HALF_TURN:
                     return Var.Corners.theta(new_pos, self.idx, self.t + 1)
@@ -156,10 +167,14 @@ class Var:
                 direction: Direction,
                 depth: int,
             ) -> "Var.Edges.theta":
-                if not self.will_rotate(face, depth):
-                    return Var.Edges.theta(self.pos, 0, self.t + 1, self.is_true)
+                c_x, c_y, c_z = self.g(self.pos)
 
-                new_pos = self.rotate_cube(face, direction, depth)
+                if not will_rotate(c_x, c_y, c_z, face, depth):
+                    return Var.Edges.theta(self.pos, self.idx, self.t + 1)
+
+                new_pos = self.g_inv(
+                    *rotate_cube(c_x, c_y, c_z, face, direction, depth)
+                )
 
                 if direction == Direction.HALF_TURN:
                     return Var.Edges.theta(new_pos, 0, self.t + 1, self.is_true)

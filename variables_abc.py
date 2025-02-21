@@ -14,6 +14,46 @@ from utils import (
 )
 
 
+def will_rotate(c_x: int, c_y: int, c_z: int, face: Face, depth: int) -> bool:
+    if face == Face.RIGHT:
+        return c_x == Variable.cube_size - 1 - depth
+    if face == Face.BOTTOM:
+        return c_y == Variable.cube_size - 1 - depth
+    if face == Face.BACK:
+        return c_z == Variable.cube_size - 1 - depth
+    raise ValueError(f"Invalid face: {face}")
+
+
+def rotate_cube(
+    c_x: int, c_y: int, c_z: int, face: Face, direction: Direction, depth: int
+) -> tuple[int, int, int]:
+    assert face in {Face.RIGHT, Face.BOTTOM, Face.BACK}, f"Invalid face: {face}"
+
+    if not will_rotate(c_x, c_y, c_z, face, depth):
+        return c_x, c_y, c_z
+
+    def rotate_1(face: Face, c_x: int, c_y: int, c_z: int) -> tuple[int, int, int]:
+        if face == Face.RIGHT:
+            return c_x, c_z, Variable.cube_size - c_y - 1
+        if face == Face.BOTTOM:
+            return Variable.cube_size - c_z - 1, c_y, c_x
+        if face == Face.BACK:
+            return c_y, Variable.cube_size - c_x - 1, c_z
+        raise ValueError(f"Invalid face: {face}")
+
+    def rotate_i(
+        face: Face, c_x: int, c_y: int, c_z: int, n_rotation: int
+    ) -> tuple[int, int, int]:
+        assert n_rotation > 0, f"Invalid rotations: {n_rotation}"
+
+        if n_rotation == 1:
+            return rotate_1(face, c_x, c_y, c_z)
+
+        return rotate_i(face, *rotate_1(face, c_x, c_y, c_z), n_rotation - 1)
+
+    return rotate_i(face, c_x, c_y, c_z, direction.value)
+
+
 class Variable(ABC):
     cube_size: int
     t_max: int
@@ -161,46 +201,6 @@ class VariableState(Variable, Generic[TPos, TIdx], ABC):
     def g_inv(self, c_x: int, c_y: int, c_z: int) -> TPos:
         return self.parent().g_inv(c_x, c_y, c_z)
 
-    def will_rotate(self, face: Face, depth: int) -> bool:
-        c_x, c_y, c_z = self.g(self.pos)
-
-        if face == Face.RIGHT:
-            return c_x == Variable.cube_size - 1 - depth
-        if face == Face.BOTTOM:
-            return c_y == Variable.cube_size - 1 - depth
-        if face == Face.BACK:
-            return c_z == Variable.cube_size - 1 - depth
-        raise ValueError(f"Invalid face: {face}")
-
-    def rotate_cube(self, face: Face, direction: Direction, depth: int) -> TPos:
-        assert face in {Face.RIGHT, Face.BOTTOM, Face.BACK}, f"Invalid face: {face}"
-
-        c_x, c_y, c_z = self.g(self.pos)
-
-        if not self.will_rotate(face, depth):
-            return self.pos
-
-        def rotate_1(face: Face, c_x: int, c_y: int, c_z: int) -> tuple[int, int, int]:
-            if face == Face.RIGHT:
-                return c_x, c_z, Variable.cube_size - c_y - 1
-            if face == Face.BOTTOM:
-                return Variable.cube_size - c_z - 1, c_y, c_x
-            if face == Face.BACK:
-                return c_y, Variable.cube_size - c_x - 1, c_z
-            raise ValueError(f"Invalid face: {face}")
-
-        def rotate_i(
-            face: Face, c_x: int, c_y: int, c_z: int, n_rotation: int
-        ) -> tuple[int, int, int]:
-            assert n_rotation > 0, f"Invalid rotations: {n_rotation}"
-
-            if n_rotation == 1:
-                return rotate_1(face, c_x, c_y, c_z)
-
-            return rotate_i(face, *rotate_1(face, c_x, c_y, c_z), n_rotation - 1)
-
-        return self.g_inv(*rotate_i(face, c_x, c_y, c_z, direction.value))
-
     @abstractmethod
     def rotate(
         self, face: Face, direction: Direction, depth: int
@@ -212,7 +212,7 @@ class VariableX(VariableState[TPos, TIdx], Generic[TPos, TIdx]):
         self, face: Face, direction: Direction, depth: int
     ) -> "VariableX[TPos, TIdx]":
         return self.__class__(
-            self.rotate_cube(face, direction, depth),
+            self.g_inv(*rotate_cube(*self.g(self.pos), face, direction, depth)),
             self.idx,
             self.t + 1,
         )
