@@ -137,7 +137,7 @@ class RubiksCubeSolver:
     def upload_to_drive(
         self,
         clauses: list[Clause],
-        folder_id="16CfwqqPviDAp7ECScSmXLh94nxyET5Am",
+        folder_id: str,
     ):
         creds = service_account.Credentials.from_service_account_file(
             "credentials.json", scopes=["https://www.googleapis.com/auth/drive.file"]
@@ -337,7 +337,7 @@ class RubiksCubeSolver:
                     actions_this_step = actions_
                     if t == 0:
                         break
-                    
+
                     sat_found = True
                     t -= 1
 
