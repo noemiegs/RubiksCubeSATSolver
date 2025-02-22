@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Iterable, cast
 import numpy as np
 
 from utils import (
@@ -120,6 +120,12 @@ class Var:
         @classmethod
         def n_pos(cls) -> int:
             return 8
+
+        @classmethod
+        def pos_range(cls) -> Iterable[CornerPos]:
+            return range(
+                1, Var.Corners.n_pos()
+            )  # Exclude origin (because it does not move) # type: ignore
 
     class Edges(VariableParent[EdgePos]):
         class x(VariableX[EdgePos, EdgeIdx]):
