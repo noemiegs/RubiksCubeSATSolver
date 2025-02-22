@@ -47,12 +47,12 @@ class RubiksCube:
     def __init__(self, size: Size) -> None:
         self.size = size
         self.faces = {
-            Face.FRONT: np.full((size[0], size[1]), Color.WHITE.value, dtype=np.int8),
-            Face.BACK: np.full((size[0], size[1]), Color.YELLOW.value, dtype=np.int8),
-            Face.LEFT: np.full((size[2], size[1]), Color.BLUE.value, dtype=np.int8),
-            Face.RIGHT: np.full((size[2], size[1]), Color.GREEN.value, dtype=np.int8),
-            Face.TOP: np.full((size[0], size[2]), Color.RED.value, dtype=np.int8),
-            Face.BOTTOM: np.full((size[0], size[2]), Color.ORANGE.value, dtype=np.int8),
+            Face.FRONT: np.full((size[X], size[Y]), Color.WHITE.value, dtype=np.int8),
+            Face.BACK: np.full((size[X], size[Y]), Color.YELLOW.value, dtype=np.int8),
+            Face.LEFT: np.full((size[Z], size[Y]), Color.BLUE.value, dtype=np.int8),
+            Face.RIGHT: np.full((size[Z], size[Y]), Color.GREEN.value, dtype=np.int8),
+            Face.TOP: np.full((size[X], size[Z]), Color.RED.value, dtype=np.int8),
+            Face.BOTTOM: np.full((size[X], size[Z]), Color.ORANGE.value, dtype=np.int8),
         }
 
     def get_vars_from_corner_pos(
@@ -93,7 +93,7 @@ class RubiksCube:
     def get_vars_from_edge_pos(self, pos: EdgePos) -> tuple[EdgeIdx, EdgeOrientation]:
         coords = list(Var.Edges.g(pos))
 
-        axis = np.argmax([0 < p < self.size[0] - 1 for p in coords]).item()
+        axis = np.argmax([0 < p < self.size[X] - 1 for p in coords]).item()
         for i in range(len(coords)):
             if i != axis:
                 coords[i] = -int(coords[i] != 0)
@@ -210,32 +210,32 @@ class RubiksCube:
 
     def __up_face_and_slice(self, face: Face, depth: int) -> tuple[Face, slice]:
         return {
-            Face.FRONT: (Face.TOP, np.s_[:, self.size[2] - 1 - depth]),
+            Face.FRONT: (Face.TOP, np.s_[:, self.size[Z] - 1 - depth]),
             Face.BACK: (Face.TOP, np.s_[::-1, depth]),
             Face.LEFT: (Face.TOP, np.s_[depth, :]),
-            Face.RIGHT: (Face.TOP, np.s_[self.size[0] - 1 - depth, ::-1]),
+            Face.RIGHT: (Face.TOP, np.s_[self.size[X] - 1 - depth, ::-1]),
             Face.TOP: (Face.BACK, np.s_[::-1, depth]),
-            Face.BOTTOM: (Face.FRONT, np.s_[:, self.size[1] - 1 - depth]),
+            Face.BOTTOM: (Face.FRONT, np.s_[:, self.size[Y] - 1 - depth]),
         }[face]
 
     def __bottom_face_and_slice(self, face: Face, depth: int) -> tuple[Face, slice]:
         return {
             Face.FRONT: (Face.BOTTOM, np.s_[::-1, depth]),
-            Face.BACK: (Face.BOTTOM, np.s_[:, self.size[2] - 1 - depth]),
+            Face.BACK: (Face.BOTTOM, np.s_[:, self.size[Z] - 1 - depth]),
             Face.LEFT: (Face.BOTTOM, np.s_[depth, :]),
-            Face.RIGHT: (Face.BOTTOM, np.s_[self.size[0] - 1 - depth, ::-1]),
+            Face.RIGHT: (Face.BOTTOM, np.s_[self.size[X] - 1 - depth, ::-1]),
             Face.TOP: (Face.FRONT, np.s_[::-1, depth]),
-            Face.BOTTOM: (Face.BACK, np.s_[:, self.size[1] - 1 - depth]),
+            Face.BOTTOM: (Face.BACK, np.s_[:, self.size[Y] - 1 - depth]),
         }[face]
 
     def __left_face_and_slice(self, face: Face, depth: int) -> tuple[Face, slice]:
         return {
-            Face.FRONT: (Face.LEFT, np.s_[self.size[2] - 1 - depth, ::-1]),
-            Face.BACK: (Face.RIGHT, np.s_[self.size[2] - 1 - depth, ::-1]),
-            Face.LEFT: (Face.BACK, np.s_[self.size[0] - 1 - depth, ::-1]),
-            Face.RIGHT: (Face.FRONT, np.s_[self.size[0] - 1 - depth, ::-1]),
+            Face.FRONT: (Face.LEFT, np.s_[self.size[Z] - 1 - depth, ::-1]),
+            Face.BACK: (Face.RIGHT, np.s_[self.size[Z] - 1 - depth, ::-1]),
+            Face.LEFT: (Face.BACK, np.s_[self.size[X] - 1 - depth, ::-1]),
+            Face.RIGHT: (Face.FRONT, np.s_[self.size[X] - 1 - depth, ::-1]),
             Face.TOP: (Face.LEFT, np.s_[::-1, depth]),
-            Face.BOTTOM: (Face.LEFT, np.s_[:, self.size[1] - 1 - depth]),
+            Face.BOTTOM: (Face.LEFT, np.s_[:, self.size[Y] - 1 - depth]),
         }[face]
 
     def __right_face_and_slice(self, face: Face, depth: int) -> tuple[Face, slice]:
@@ -245,7 +245,7 @@ class RubiksCube:
             Face.LEFT: (Face.FRONT, np.s_[depth, :]),
             Face.RIGHT: (Face.BACK, np.s_[depth, :]),
             Face.TOP: (Face.RIGHT, np.s_[::-1, depth]),
-            Face.BOTTOM: (Face.RIGHT, np.s_[:, self.size[1] - 1 - depth]),
+            Face.BOTTOM: (Face.RIGHT, np.s_[:, self.size[Y] - 1 - depth]),
         }[face]
 
     def __rotate_clockwise(self, face: Face, depth: int) -> None:
@@ -283,22 +283,22 @@ class RubiksCube:
         if depth < 0:
             return False
 
-        if face in (Face.FRONT, Face.BACK) and depth >= self.size[2] - 1:
+        if face in (Face.FRONT, Face.BACK) and depth >= self.size[Z] - 1:
             return False
-        if face in (Face.LEFT, Face.RIGHT) and depth >= self.size[0] - 1:
+        if face in (Face.LEFT, Face.RIGHT) and depth >= self.size[X] - 1:
             return False
-        if face in (Face.TOP, Face.BOTTOM) and depth >= self.size[1] - 1:
+        if face in (Face.TOP, Face.BOTTOM) and depth >= self.size[Y] - 1:
             return False
 
         if direction == Direction.HALF_TURN:
             return True
 
         if face in (Face.FRONT, Face.BACK):
-            return self.size[0] == self.size[1]
+            return self.size[X] == self.size[Y]
         if face in (Face.LEFT, Face.RIGHT):
-            return self.size[1] == self.size[2]
+            return self.size[Y] == self.size[Z]
         if face in (Face.TOP, Face.BOTTOM):
-            return self.size[0] == self.size[2]
+            return self.size[X] == self.size[Z]
 
     def rotate(self, face: Face, direction: Direction, depth: int) -> None:
         assert self.can_rotate(face, direction, depth), "Cannot rotate face"
@@ -344,7 +344,7 @@ class RubiksCube:
 
     def rotate_whole_cube(self, face: Face, direction: Direction) -> None:
         self.rotate(face.opposite(), direction.opposite(), 0)
-        for i in range(self.size[0] - 1):
+        for i in range(self.size[X] - 1):
             self.rotate(face, direction, i)
 
     def __origin(self) -> tuple[CornerPos, CornerOrientation]:
@@ -355,7 +355,7 @@ class RubiksCube:
         return self.get_vars_from_corner_pos(0)
 
     def replace_origin(self) -> None:
-        Variable.cube_size = self.size[0]
+        Variable.cube_size = self.size[X]
 
         pos, o = self.__origin()
         if pos == 0 and o == 0:
