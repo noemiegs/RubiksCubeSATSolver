@@ -352,7 +352,7 @@ class RubiksCube:
             idx, o = self.get_vars_from_corner_pos(pos)
             if idx == 0:
                 return pos, o
-        raise ValueError("Origin not found")
+        return self.get_vars_from_corner_pos(0)
 
     def replace_origin(self) -> None:
         Variable.cube_size = self.size[0]
