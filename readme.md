@@ -102,7 +102,6 @@ $$
 r_x(f, \text{Counterclockwise}, c) = r_x(f, \text{Clockwise}, r_x(f, \text{Clockwise}, r_x(f, \text{Clockwise}, c)))
 $$
 
----
 
 ### Orientations
 
@@ -142,7 +141,6 @@ r_\theta(\text{Back}, d, c, o) =
 \end{cases}
 $$
 
----
 
 ## Conditions d'arrêt
 
@@ -162,7 +160,6 @@ $$
 \forall c \in C : \quad \theta_{c, 0}(t_{\text{max}})
 $$
 
----
 ## Transitions
 
 Les transitions changent à la fois **la position** et **l'orientation** des cubes affectés.
@@ -180,7 +177,6 @@ Formulé en CNF :
 - $(x_{c', id}(t) \lor \lnot x_{c, id}(t - 1) \lor \lnot a_{f, d}(t))$
 - $(\lnot x_{c', id}(t) \lor x_{c, id}(t - 1) \lor \lnot a_{f, d}(t))$
 
----
 
 ### Orientation :
 
@@ -193,7 +189,6 @@ Formulé en CNF :
 - $(\theta_{c', o'}(t) \lor \lnot \theta_{c, o}(t - 1) \lor \lnot a_{f,d}(t))$
 - $(\lnot \theta_{c', o'}(t) \lor \theta_{c, o}(t - 1) \lor \lnot a_{f,d}(t))$
 
----
 
 ## Contraintes
 
