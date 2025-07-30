@@ -58,122 +58,156 @@ On notera $c_x$, $c_y$ et $c_z$ les coordonnées du cube $c$
 
 Enfin, on notera $g$ la fonction permettant d'obtenir les coordonnées du cube $c$ : $g(c) = c_x, c_y, c_z$. Et son inverse $g^{-1}(c_x, c_y, c_z) = c$
 
-## Fonctions rotations
-
-Soit $c \in C$ et $o \in O$
+Soient $c \in C$ et $o \in O$.
 
 ### Positions
 
+- Rotation de la face droite :
+
 $$
-r_x(Right, Clockwise, c) =
+r_x(\text{Right}, \text{Clockwise}, c) =
 \begin{cases}
-    g^{-1}(c_x, c_z, 1 - c_y) \ \ \text{si} \ \ c \in C_{Right} \\
-    c \ \ \text{sinon} \\
-\end{cases}
-$$
-$$
-r_x(Bottom, Clockwise, c) =
-\begin{cases}
-    g^{-1}(1 - c_z, c_y, c_x) \ \ \text{si} \ \ c \in C_{Bottom} \\
-    c \ \ \text{sinon} \\
-\end{cases}
-$$
-$$
-r_x(Back, Clockwise, c) =
-\begin{cases}
-    g^{-1}(c_y, 1 - c_x, c_z) \ \ \text{si} \ \ c \in C_{Back} \\
-    c \ \ \text{sinon} \\
+    g^{-1}(c_x, c_z, 1 - c_y) & \text{si } c \in C_{\text{Right}} \\
+    c & \text{sinon}
 \end{cases}
 $$
 
-- $\forall \ f \in F$ :
-$$r_x(f, Halfturn, c) = r_x^2(f, Clockwise, c)$$
-$$r_x(f, Counterclockwise, c) = r_x^3(f, Clockwise, c)$$
+- Rotation de la face du bas :
+
+$$
+r_x(\text{Bottom}, \text{Clockwise}, c) =
+\begin{cases}
+    g^{-1}(1 - c_z, c_y, c_x) & \text{si } c \in C_{\text{Bottom}} \\
+    c & \text{sinon}
+\end{cases}
+$$
+
+- Rotation de la face arrière :
+
+$$
+r_x(\text{Back}, \text{Clockwise}, c) =
+\begin{cases}
+    g^{-1}(c_y, 1 - c_x, c_z) & \text{si } c \in C_{\text{Back}} \\
+    c & \text{sinon}
+\end{cases}
+$$
+
+Les autres directions se déduisent :
+
+$$
+r_x(f, \text{Halfturn}, c) = r_x(f, \text{Clockwise}, r_x(f, \text{Clockwise}, c))
+$$
+
+$$
+r_x(f, \text{Counterclockwise}, c) = r_x(f, \text{Clockwise}, r_x(f, \text{Clockwise}, r_x(f, \text{Clockwise}, c)))
+$$
+
+---
 
 ### Orientations
 
-- $\forall \ f \in F$
-$$r_\theta(f, Halfturn, c, o) = o$$
+Pour toute face $f$ :
 
-- $\forall \ d \in \{Clockwise, Counterclockwise\}$
 $$
-r_\theta(Right, d, c, o) =
+r_\theta(f, \text{Halfturn}, c, o) = o
+$$
+
+- Rotation de la face droite :
+
+$$
+r_\theta(\text{Right}, d, c, o) =
 \begin{cases}
-    s_{0, 2}(o) \ \ \text{si} \ \ c \in C_{Right} \\
-    o \ \ \text{sinon} \\
+    s_{0, 2}(o) & \text{si } c \in C_{\text{Right}} \\
+    o & \text{sinon}
 \end{cases}
 $$
+
+- Rotation de la face du bas :
+
 $$
-r_\theta(Bottom, d, c, o) =
+r_\theta(\text{Bottom}, d, c, o) =
 \begin{cases}
-    s_{0, 1}(o) \ \ \text{si} \ \ c \in C_{Bottom} \\
-    o \ \ \text{sinon} \\
+    s_{0, 1}(o) & \text{si } c \in C_{\text{Bottom}} \\
+    o & \text{sinon}
 \end{cases}
 $$
+
+- Rotation de la face arrière :
+
 $$
-r_\theta(Back, d, c, o) =
+r_\theta(\text{Back}, d, c, o) =
 \begin{cases}
-    s_{1, 2}(o) \ \ \text{si} \ \ c \in C_{Back} \\
-    o \ \ \text{sinon} \\
+    s_{1, 2}(o) & \text{si } c \in C_{\text{Back}} \\
+    o & \text{sinon}
 \end{cases}
 $$
+
+---
 
 ## Conditions d'arrêt
 
-### Positions
+### Position finale
 
-L'$id$ étant définie en fonction de la position par défaut on doit avoir :
-$$\forall \ id \in C : x_{id, id}(t_{max})$$
+Le cube est correctement placé si :
 
-### Orientations
+$$
+\forall id \in C : \quad x_{id, id}(t_{\text{max}})
+$$
 
-Les orientations par défaut étant $o = 0$ on doit avoir :
-$$\forall \ c \in C : \theta_{c, 0}(t_{max})$$
+### Orientation finale
 
+Et correctement orienté si :
+
+$$
+\forall c \in C : \quad \theta_{c, 0}(t_{\text{max}})
+$$
+
+---
 ## Transitions
 
-Les transitions changent à la fois l'orientation et la postion des cubes qu'elles affecte.
+Les transitions changent à la fois **la position** et **l'orientation** des cubes affectés.
 
-On a donc $\forall \ t \in T^*$ :
+Pour tout $t \in T^*$ :
 
-Pour les positions :
-- $\forall \ f \in F, \ \forall \ d \in D, \ \forall \ c, id \in C$ :
-$$a_{f, d}(t) \Rightarrow \Big( x_{c', id}(t) = x_{c, id}(t - 1) \Big)$$
+### Position :
 
-Soit :
 $$
-\begin{cases}
-    x_{c', id}(t) \ \vee \ \neg x_{c, id}(t - 1) \ \vee \ \neg a_{f, d}(t) \\
-    \neg x_{c', id}(t) \ \vee \ x_{c, id}(t - 1) \ \vee \ \neg a_{f, d}(t) \\
-\end{cases}
+a_{f, d}(t) \Rightarrow \left( x_{r_x(f,d,c), id}(t) = x_{c, id}(t-1) \right)
 $$
 
-Pour les orientations :
-- $\forall \ f \in F, \ \forall \ d \in D, \ \forall \ c \in C, \ \forall \ o \in O$ :
+Formulé en CNF :
+
+- $(x_{c', id}(t) \lor \lnot x_{c, id}(t - 1) \lor \lnot a_{f, d}(t))$
+- $(\lnot x_{c', id}(t) \lor x_{c, id}(t - 1) \lor \lnot a_{f, d}(t))$
+
+---
+
+### Orientation :
+
 $$
-a_{f, d}(t) \Rightarrow \Big( \theta_{c', o'}(t) = \theta_{c, o}(t - 1) \Big) \\
+a_{f, d}(t) \Rightarrow \left( \theta_{r_x(f,d,c), r_\theta(f,d,c,o)}(t) = \theta_{c, o}(t-1) \right)
 $$
 
-Soit :
-$$
-\begin{cases}
-    \theta_{c', o'}(t) \ \vee \ \neg \theta_{c, o}(t - 1) \ \vee \ \neg a_{f, d}(t) \\
-    \neg \theta_{c', o'}(t) \ \vee \ \theta_{c, o}(t - 1) \ \vee \ \neg a_{f, d}(t) \\
-\end{cases}
-$$
+Formulé en CNF :
+
+- $(\theta_{c', o'}(t) \lor \lnot \theta_{c, o}(t - 1) \lor \lnot a_{f,d}(t))$
+- $(\lnot \theta_{c', o'}(t) \lor \theta_{c, o}(t - 1) \lor \lnot a_{f,d}(t))$
+
+---
 
 ## Contraintes
 
-On ne peut évidemment pas faire plusieurs rotation à la fois d'où :
-$$
-\forall \ t \in T^* : \bigwedge_{
-    \substack{
-        (f, d), (f', d') \in F \times D\\
-        f, d \ < \ f', d'\\
-    }
-} \neg a_{f, d}(t) \vee \neg a_{f', d'}(t)$$
+### 1. Une seule action à la fois
 
-Pour simplifier les transitions on force également le solveur à prendre une action à chaque étape :
 $$
-\forall \ t \in T^* : \bigvee_{(f, d) \in F \times D} a_{f, d}(t)
+\forall t \in T^* :
+\bigwedge_{\substack{(f, d), (f', d') \in F \times D \\ (f, d) <_{\text{lex}} (f', d')}} 
+\left( \lnot a_{f, d}(t) \lor \lnot a_{f', d'}(t) \right)
+$$
+
+### 2. Toujours effectuer une action
+
+$$
+\forall t \in T^* :
+\bigvee_{(f, d) \in F \times D} a_{f, d}(t)
 $$
