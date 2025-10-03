@@ -26,7 +26,7 @@ On note $a_{f, d}(t)$ l'action de tourner la face $f \in F = \{Right, Bottom, Ba
 ### Le cube
 Le Rubik's Cube est representé par un ensemble de cube ayant un $id \in C = \{1, ..., 7\}$ et une orientation $o \in O = \{0, 1, 2\}$ (l'orientation $o = 0$ étant celle lorsque le Rubik's Cube est fini)
 
-On note $x_{c, id}(t)$ la variable booléenne indiquant si le cube ayant l'identifiant $id \in C$ est sur la position $c \in C$ à l'étape $t \in T$ (le cube étant à la bonne place ssi $x_{id, id}(t)$)
+On note $x_{c, id}(t)$ la variable booléenne indiquant si le cube ayant l'identifiant $id \in C$ est sur la position $c \in C$ à l'étape $t \in T$ (le cube étant à la bonne place ssi $x_{id,\ id}(t)$)
 
 Et $\theta_{c, o}(t)$ la variable booléenne indiquant si le cube à la position $c \in C$ est dans l'orientation $o \in O$ à l'étape $t \in T$
 
@@ -43,16 +43,15 @@ Par abus de notation, on notera $c' = r_x(f, d, c)$ et $o' = r_\theta(f, d, c, o
 Pour chaque face $f \in F$, on notera $C_f$ l'esemble des cube affecté par la rotation
 
 On notera la permutation entre $i$ et $j$
-$$s_{i, j} :
-\begin{cases}
-    O \rightarrow O \\
-    o \mapsto
-    \begin{cases}
-        i & \text{si} \quad o = j \\
-        j & \text{si} \quad o = i \\
-        o & \text{sinon}
-    \end{cases}
-\end{cases}$$
+
+$$
+s_{i,j}(o) =
+\begin{array}{ll}
+i & \text{if } o = j \\
+j & \text{if } o = i \\
+o & \text{otherwise}
+\end{array}
+$$
 
 On notera $c_x$, $c_y$ et $c_z$ les coordonnées du cube $c$
 
